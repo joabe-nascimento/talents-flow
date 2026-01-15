@@ -51,6 +51,10 @@ interface User {
             <span class="nav-icon">🔄</span>
             <span>Pipeline</span>
           </a>
+          <a routerLink="/dashboard/reports" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">📊</span>
+            <span>Relatórios</span>
+          </a>
         </nav>
 
         <div class="sidebar-footer">

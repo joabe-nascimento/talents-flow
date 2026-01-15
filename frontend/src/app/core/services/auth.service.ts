@@ -13,17 +13,26 @@ export class AuthService {
   private readonly TOKEN_KEY = 'talentflow_token';
   private readonly USER_KEY = 'talentflow_user';
 
-  private currentUserSignal = signal<User | null>(this.getStoredUser());
+  private currentUserSignal = signal<User | null>(null);
   
   currentUser = computed(() => this.currentUserSignal());
   isAuthenticated = computed(() => !!this.currentUserSignal());
   isAdmin = computed(() => this.currentUserSignal()?.role === Role.ADMIN);
-  isHR = computed(() => this.currentUserSignal()?.role === Role.HR || this.isAdmin());
+  isHR = computed(() => {
+    const role = this.currentUserSignal()?.role;
+    return role === Role.HR || role === Role.ADMIN;
+  });
 
   constructor(
     private http: HttpClient,
     private router: Router
-  ) {}
+  ) {
+    // Inicializar com usuário do localStorage após construção
+    const storedUser = this.getStoredUser();
+    if (storedUser) {
+      this.currentUserSignal.set(storedUser);
+    }
+  }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.API_URL}/login`, credentials).pipe(

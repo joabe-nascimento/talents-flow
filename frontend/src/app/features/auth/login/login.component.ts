@@ -227,12 +227,12 @@ interface AuthResponse {
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
       color: white;
 
       &:hover:not(:disabled) {
         transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
       }
 
       &:disabled {

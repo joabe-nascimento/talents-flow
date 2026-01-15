@@ -78,7 +78,7 @@ interface PipelineColumn {
     </div>
   `,
   styles: [`
-    .page { max-width: 100%; }
+    .page { width: 100%; }
 
     .header {
       display: flex;

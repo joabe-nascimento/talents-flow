@@ -170,7 +170,7 @@ interface Department {
     </div>
   `,
   styles: [`
-    .page { max-width: 1100px; }
+    .page { width: 100%; }
 
     .header {
       display: flex;

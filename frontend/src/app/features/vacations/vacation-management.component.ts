@@ -208,7 +208,7 @@ interface VacationRequest {
     }
   `,
   styles: [`
-    .page { max-width: 900px; }
+    .page { width: 100%; }
 
     .header {
       display: flex;

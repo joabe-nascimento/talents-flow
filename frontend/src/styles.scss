@@ -64,133 +64,72 @@ a {
   }
 }
 
-// Global Button Styles
-.btn-primary {
+// Global Button Styles - Base
+.btn-primary, .btn-secondary, .btn-danger, .btn-outline {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
-  background: var(--primary);
-  color: var(--white);
+  gap: 8px;
+  min-width: 120px;
+  height: 40px;
+  padding: 0 20px;
   border: none;
   border-radius: var(--radius);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s ease;
   text-decoration: none;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+  }
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--white);
 
   &:hover:not(:disabled) {
     background: var(--primary-dark);
   }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
 }
 
 .btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
   background: var(--gray-100);
   color: var(--gray-700);
-  border: none;
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-decoration: none;
 
   &:hover:not(:disabled) {
     background: var(--gray-200);
   }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
 }
 
 .btn-danger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
   background: var(--danger);
   color: var(--white);
-  border: none;
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-decoration: none;
 
   &:hover:not(:disabled) {
     background: #dc2626;
   }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
 }
 
 .btn-outline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 16px;
   background: transparent;
   color: var(--primary);
   border: 1px solid var(--primary);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-decoration: none;
 
   &:hover:not(:disabled) {
     background: var(--primary);
     color: var(--white);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
   }
 }
 

@@ -185,23 +185,27 @@ interface JobPosition {
     .header-actions { display: flex; gap: 8px; }
 
     .btn-primary, .btn-secondary {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 10px 16px;
+      justify-content: center;
+      gap: 8px;
+      min-width: 120px;
+      height: 40px;
+      padding: 0 20px;
       border: none;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
       text-decoration: none;
+      white-space: nowrap;
     }
 
     .btn-primary { background: #7c3aed; color: white; }
     .btn-primary:hover { background: #6d28d9; }
     .btn-secondary { background: #f4f4f5; color: #3f3f46; }
     .btn-secondary:hover { background: #e4e4e7; }
-    .btn-primary svg, .btn-secondary svg { width: 16px; height: 16px; }
+    .btn-primary svg, .btn-secondary svg { width: 18px; height: 18px; }
 
     .loading { display: flex; justify-content: center; padding: 60px 0; }
     .spinner { width: 28px; height: 28px; border: 2px solid #e4e4e7; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }

@@ -122,32 +122,45 @@ interface Department {
     .header p { font-size: 13px; color: #71717a; margin: 4px 0 0; }
 
     .btn-primary {
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 10px 16px;
+      justify-content: center;
+      gap: 8px;
+      min-width: 120px;
+      height: 40px;
+      padding: 0 20px;
       background: #7c3aed;
       color: white;
       border: none;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .btn-primary:hover { background: #6d28d9; }
-    .btn-primary svg { width: 16px; height: 16px; }
+    .btn-primary svg { width: 18px; height: 18px; }
 
     .btn-secondary {
-      padding: 10px 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-width: 120px;
+      height: 40px;
+      padding: 0 20px;
       background: #f4f4f5;
       color: #3f3f46;
       border: none;
       border-radius: 8px;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
+      white-space: nowrap;
     }
+    .btn-secondary:hover { background: #e4e4e7; }
+    .btn-secondary svg { width: 18px; height: 18px; }
 
     .loading { display: flex; justify-content: center; padding: 60px 0; }
     .spinner { width: 28px; height: 28px; border: 2px solid #e4e4e7; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }

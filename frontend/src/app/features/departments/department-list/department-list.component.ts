@@ -109,7 +109,7 @@ interface Department {
     }
   `,
   styles: [`
-    .page { max-width: 1200px; }
+    .page { width: 100%; }
 
     .header {
       display: flex;

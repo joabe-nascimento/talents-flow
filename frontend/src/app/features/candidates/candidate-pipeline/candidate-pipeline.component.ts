@@ -94,7 +94,7 @@ interface PipelineColumn {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 14px;
+      padding: 10px 16px;
       background: #f4f4f5;
       color: #3f3f46;
       border: none;

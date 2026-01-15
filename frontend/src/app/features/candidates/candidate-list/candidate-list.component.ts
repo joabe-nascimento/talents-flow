@@ -188,7 +188,7 @@ interface JobPosition {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 14px;
+      padding: 10px 16px;
       border: none;
       border-radius: 8px;
       font-size: 13px;

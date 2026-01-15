@@ -224,7 +224,7 @@ interface VacationRequest {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 14px;
+      padding: 10px 16px;
       background: #7c3aed;
       color: white;
       border: none;
@@ -238,7 +238,7 @@ interface VacationRequest {
     .btn-primary svg { width: 16px; height: 16px; }
 
     .btn-secondary {
-      padding: 8px 14px;
+      padding: 10px 16px;
       background: #f4f4f5;
       color: #3f3f46;
       border: none;
@@ -293,7 +293,7 @@ interface VacationRequest {
     }
 
     .tab {
-      padding: 8px 14px;
+      padding: 10px 16px;
       background: transparent;
       border: none;
       border-radius: 6px;

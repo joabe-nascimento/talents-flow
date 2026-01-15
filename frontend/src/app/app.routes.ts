@@ -33,6 +33,10 @@ export const routes: Routes = [
       {
         path: 'candidates',
         loadComponent: () => import('./features/candidates/candidate-list/candidate-list.component').then(m => m.CandidateListComponent)
+      },
+      {
+        path: 'pipeline',
+        loadComponent: () => import('./features/candidates/candidate-pipeline/candidate-pipeline.component').then(m => m.CandidatePipelineComponent)
       }
     ]
   },

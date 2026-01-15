@@ -7,22 +7,18 @@ interface DashboardStats {
   totalDepartments: number;
   totalJobs: number;
   totalCandidates: number;
-  openJobs: number;
-  newCandidates: number;
 }
 
 interface Candidate {
   id: number;
   status: string;
   appliedAt: string;
-  jobPosition: { id: number; title: string } | null;
 }
 
 interface Employee {
   id: number;
   department: { id: number; name: string } | null;
   hireDate: string;
-  status: string;
 }
 
 interface Department {
@@ -35,175 +31,137 @@ interface Department {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="page fade-in">
-      <div class="page-header">
+    <div class="page">
+      <header class="header">
         <div>
-          <h1>Relatórios e Analytics</h1>
-          <p>Métricas e indicadores de RH</p>
+          <h1>Relatórios</h1>
+          <p>Métricas e indicadores</p>
         </div>
-        <button class="btn btn-primary" (click)="exportReport()">
-          📥 Exportar PDF
-        </button>
-      </div>
+      </header>
 
       @if (loading()) {
-        <div class="loading-state">
-          <div class="spinner"></div>
-          <p>Carregando dados...</p>
-        </div>
+        <div class="loading"><div class="spinner"></div></div>
       } @else {
-        <!-- KPIs principais -->
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8)">👥</div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ stats()?.totalEmployees || 0 }}</span>
-              <span class="kpi-label">Total de Funcionários</span>
-            </div>
+        <!-- KPIs -->
+        <div class="kpis">
+          <div class="kpi">
+            <div class="kpi-value">{{ stats()?.totalEmployees || 0 }}</div>
+            <div class="kpi-label">Funcionários</div>
+            <div class="kpi-trend up">+12%</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #10b981, #059669)">💼</div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ stats()?.openJobs || 0 }}</span>
-              <span class="kpi-label">Vagas Abertas</span>
-            </div>
+          <div class="kpi">
+            <div class="kpi-value">{{ stats()?.totalJobs || 0 }}</div>
+            <div class="kpi-label">Vagas</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706)">📋</div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ stats()?.totalCandidates || 0 }}</span>
-              <span class="kpi-label">Total de Candidatos</span>
-            </div>
+          <div class="kpi">
+            <div class="kpi-value">{{ stats()?.totalCandidates || 0 }}</div>
+            <div class="kpi-label">Candidatos</div>
+            <div class="kpi-trend up">+23%</div>
           </div>
-          <div class="kpi-card">
-            <div class="kpi-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed)">🏢</div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ stats()?.totalDepartments || 0 }}</span>
-              <span class="kpi-label">Departamentos</span>
-            </div>
+          <div class="kpi">
+            <div class="kpi-value">{{ successRate() }}%</div>
+            <div class="kpi-label">Taxa de Sucesso</div>
           </div>
         </div>
 
-        <!-- Gráficos e métricas -->
-        <div class="charts-grid">
-          <!-- Funil de Recrutamento -->
-          <div class="chart-card">
-            <h3>Funil de Recrutamento</h3>
-            <div class="funnel">
-              @for (stage of recruitmentFunnel(); track stage.status) {
-                <div class="funnel-stage">
-                  <div class="funnel-bar" 
-                       [style.width.%]="getFunnelWidth(stage.count)"
-                       [style.backgroundColor]="stage.color">
-                    <span class="funnel-count">{{ stage.count }}</span>
-                  </div>
-                  <span class="funnel-label">{{ stage.label }}</span>
-                </div>
-              }
+        <div class="grid">
+          <!-- Funnel -->
+          <div class="card">
+            <div class="card-header">
+              <h2>Funil de Recrutamento</h2>
             </div>
-          </div>
-
-          <!-- Funcionários por Departamento -->
-          <div class="chart-card">
-            <h3>Funcionários por Departamento</h3>
-            <div class="bar-chart">
-              @for (dept of employeesByDept(); track dept.name) {
-                <div class="bar-item">
-                  <div class="bar-label">{{ dept.name }}</div>
-                  <div class="bar-container">
-                    <div class="bar-fill" 
-                         [style.width.%]="getBarWidth(dept.count, maxEmployeesInDept())"
-                         [style.backgroundColor]="getRandomColor(dept.name)">
+            <div class="card-body">
+              <div class="funnel">
+                @for (stage of recruitmentFunnel(); track stage.status) {
+                  <div class="funnel-item">
+                    <div class="funnel-label">{{ stage.label }}</div>
+                    <div class="funnel-bar-container">
+                      <div class="funnel-bar" [style.width.%]="getFunnelWidth(stage.count)" [style.background]="stage.color"></div>
+                      <span class="funnel-value">{{ stage.count }}</span>
                     </div>
-                    <span class="bar-value">{{ dept.count }}</span>
                   </div>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- By Department -->
+          <div class="card">
+            <div class="card-header">
+              <h2>Por Departamento</h2>
+            </div>
+            <div class="card-body">
+              @if (employeesByDept().length === 0) {
+                <div class="empty-chart">Sem dados</div>
+              } @else {
+                <div class="bar-chart">
+                  @for (dept of employeesByDept(); track dept.name) {
+                    <div class="bar-item">
+                      <div class="bar-label">{{ dept.name }}</div>
+                      <div class="bar-track">
+                        <div class="bar-fill" [style.width.%]="getBarWidth(dept.count)"></div>
+                      </div>
+                      <div class="bar-value">{{ dept.count }}</div>
+                    </div>
+                  }
                 </div>
-              } @empty {
-                <p class="no-data">Sem dados disponíveis</p>
               }
             </div>
           </div>
 
-          <!-- Taxa de Conversão -->
-          <div class="chart-card">
-            <h3>Taxa de Conversão</h3>
-            <div class="metrics-list">
-              <div class="metric-item">
-                <div class="metric-info">
-                  <span class="metric-label">Candidatos → Triagem</span>
-                  <span class="metric-value">{{ conversionRates().toScreening }}%</span>
-                </div>
-                <div class="metric-bar">
-                  <div class="metric-fill" [style.width.%]="conversionRates().toScreening" style="background: #f59e0b"></div>
-                </div>
-              </div>
-              <div class="metric-item">
-                <div class="metric-info">
-                  <span class="metric-label">Triagem → Entrevista</span>
-                  <span class="metric-value">{{ conversionRates().toInterview }}%</span>
-                </div>
-                <div class="metric-bar">
-                  <div class="metric-fill" [style.width.%]="conversionRates().toInterview" style="background: #8b5cf6"></div>
-                </div>
-              </div>
-              <div class="metric-item">
-                <div class="metric-info">
-                  <span class="metric-label">Entrevista → Contratação</span>
-                  <span class="metric-value">{{ conversionRates().toHired }}%</span>
-                </div>
-                <div class="metric-bar">
-                  <div class="metric-fill" [style.width.%]="conversionRates().toHired" style="background: #10b981"></div>
-                </div>
-              </div>
+          <!-- Conversion Rates -->
+          <div class="card">
+            <div class="card-header">
+              <h2>Taxa de Conversão</h2>
             </div>
-          </div>
-
-          <!-- Contratações por Mês -->
-          <div class="chart-card">
-            <h3>Contratações nos Últimos 6 Meses</h3>
-            <div class="line-chart">
-              @for (month of hiringsByMonth(); track month.month) {
-                <div class="chart-column">
-                  <div class="column-bar" [style.height.%]="getColumnHeight(month.count)">
-                    <span class="column-value">{{ month.count }}</span>
+            <div class="card-body">
+              <div class="metrics">
+                <div class="metric">
+                  <div class="metric-header">
+                    <span>Novos → Triagem</span>
+                    <span class="metric-value">{{ conversionRates().toScreening }}%</span>
                   </div>
-                  <span class="column-label">{{ month.month }}</span>
+                  <div class="metric-bar">
+                    <div class="metric-fill yellow" [style.width.%]="conversionRates().toScreening"></div>
+                  </div>
                 </div>
-              }
+                <div class="metric">
+                  <div class="metric-header">
+                    <span>Triagem → Entrevista</span>
+                    <span class="metric-value">{{ conversionRates().toInterview }}%</span>
+                  </div>
+                  <div class="metric-bar">
+                    <div class="metric-fill purple" [style.width.%]="conversionRates().toInterview"></div>
+                  </div>
+                </div>
+                <div class="metric">
+                  <div class="metric-header">
+                    <span>Entrevista → Contratação</span>
+                    <span class="metric-value">{{ conversionRates().toHired }}%</span>
+                  </div>
+                  <div class="metric-bar">
+                    <div class="metric-fill green" [style.width.%]="conversionRates().toHired"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Tabela de Resumo -->
-        <div class="summary-card">
-          <h3>Resumo do Período</h3>
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-icon">📈</span>
-              <div class="summary-content">
-                <span class="summary-value">{{ avgTimeToHire() }} dias</span>
-                <span class="summary-label">Tempo médio de contratação</span>
-              </div>
+          <!-- Monthly -->
+          <div class="card">
+            <div class="card-header">
+              <h2>Contratações por Mês</h2>
             </div>
-            <div class="summary-item">
-              <span class="summary-icon">✅</span>
-              <div class="summary-content">
-                <span class="summary-value">{{ totalHired() }}</span>
-                <span class="summary-label">Contratados este mês</span>
-              </div>
-            </div>
-            <div class="summary-item">
-              <span class="summary-icon">⏳</span>
-              <div class="summary-content">
-                <span class="summary-value">{{ pendingCandidates() }}</span>
-                <span class="summary-label">Candidatos em processo</span>
-              </div>
-            </div>
-            <div class="summary-item">
-              <span class="summary-icon">📊</span>
-              <div class="summary-content">
-                <span class="summary-value">{{ successRate() }}%</span>
-                <span class="summary-label">Taxa de sucesso</span>
+            <div class="card-body">
+              <div class="column-chart">
+                @for (month of hiringsByMonth(); track month.month) {
+                  <div class="column-item">
+                    <div class="column-bar" [style.height.%]="getColumnHeight(month.count)">
+                      <span class="column-value">{{ month.count }}</span>
+                    </div>
+                    <span class="column-label">{{ month.month }}</span>
+                  </div>
+                }
               </div>
             </div>
           </div>
@@ -212,339 +170,208 @@ interface Department {
     </div>
   `,
   styles: [`
-    .page { max-width: 1400px; }
-    
-    .page-header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      margin-bottom: 2rem; 
-    }
-    .page-header h1 { margin: 0; font-size: 1.5rem; color: #1e293b; }
-    .page-header p { margin: 0.25rem 0 0; color: #64748b; }
-    
-    .btn { 
-      padding: 0.625rem 1.25rem; 
-      border-radius: 0.5rem; 
-      cursor: pointer; 
-      border: none; 
-      font-size: 0.875rem;
-      display: inline-flex;
+    .page { max-width: 1100px; }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 0.5rem;
+      margin-bottom: 20px;
     }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-primary:hover { background: #2563eb; }
-    
-    .loading-state { 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      padding: 4rem; 
-      color: #64748b;
-    }
-    .spinner { 
-      width: 40px; 
-      height: 40px; 
-      border: 3px solid #e2e8f0; 
-      border-top-color: #3b82f6; 
-      border-radius: 50%; 
-      animation: spin 0.8s linear infinite; 
-      margin-bottom: 1rem;
-    }
+
+    .header h1 { font-size: 20px; font-weight: 600; color: #18181b; margin: 0; }
+    .header p { font-size: 13px; color: #71717a; margin: 4px 0 0; }
+
+    .loading { display: flex; justify-content: center; padding: 60px 0; }
+    .spinner { width: 28px; height: 28px; border: 2px solid #e4e4e7; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    
-    /* KPI Cards */
-    .kpi-grid {
+
+    /* KPIs */
+    .kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
     }
-    
-    .kpi-card {
-      background: white;
-      border-radius: 1rem;
-      padding: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      transition: transform 0.2s, box-shadow 0.2s;
+
+    .kpi {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #f4f4f5;
+      padding: 16px;
+      position: relative;
     }
-    
-    .kpi-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+
+    .kpi-value { font-size: 26px; font-weight: 700; color: #18181b; }
+    .kpi-label { font-size: 12px; color: #71717a; margin-top: 2px; }
+
+    .kpi-trend {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
     }
-    
-    .kpi-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-    }
-    
-    .kpi-content {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .kpi-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: #1e293b;
-    }
-    
-    .kpi-label {
-      font-size: 0.875rem;
-      color: #64748b;
-    }
-    
-    /* Charts Grid */
-    .charts-grid {
+
+    .kpi-trend.up { background: #dcfce7; color: #16a34a; }
+
+    /* Grid */
+    .grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
-    
-    @media (max-width: 1024px) {
-      .charts-grid { grid-template-columns: 1fr; }
+
+    @media (max-width: 768px) {
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .grid { grid-template-columns: 1fr; }
     }
-    
-    .chart-card {
-      background: white;
-      border-radius: 1rem;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #f4f4f5;
+      overflow: hidden;
     }
-    
-    .chart-card h3 {
-      margin: 0 0 1.5rem;
-      font-size: 1rem;
-      color: #1e293b;
+
+    .card-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f4f4f5;
     }
-    
-    /* Funnel Chart */
-    .funnel {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+
+    .card-header h2 { font-size: 13px; font-weight: 600; color: #18181b; margin: 0; }
+
+    .card-body { padding: 16px; }
+
+    .empty-chart {
+      padding: 40px;
+      text-align: center;
+      color: #a1a1aa;
+      font-size: 13px;
     }
-    
-    .funnel-stage {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    
-    .funnel-bar {
-      height: 36px;
-      border-radius: 0.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      padding-right: 0.75rem;
-      min-width: 60px;
-      transition: width 0.5s ease;
-    }
-    
-    .funnel-count {
-      color: white;
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-    
+
+    /* Funnel */
+    .funnel { display: flex; flex-direction: column; gap: 10px; }
+
+    .funnel-item { display: flex; align-items: center; gap: 12px; }
+
     .funnel-label {
-      color: #64748b;
-      font-size: 0.875rem;
-      white-space: nowrap;
+      width: 80px;
+      font-size: 12px;
+      color: #71717a;
+      flex-shrink: 0;
     }
-    
-    /* Bar Chart */
-    .bar-chart {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-    
-    .bar-item {
+
+    .funnel-bar-container {
+      flex: 1;
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 8px;
     }
-    
+
+    .funnel-bar {
+      height: 24px;
+      border-radius: 4px;
+      min-width: 30px;
+      transition: width 0.3s ease;
+    }
+
+    .funnel-value { font-size: 12px; font-weight: 600; color: #18181b; }
+
+    /* Bar Chart */
+    .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+
+    .bar-item { display: flex; align-items: center; gap: 10px; }
+
     .bar-label {
-      width: 120px;
-      font-size: 0.875rem;
-      color: #475569;
+      width: 80px;
+      font-size: 12px;
+      color: #3f3f46;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    
-    .bar-container {
+
+    .bar-track {
       flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .bar-fill {
-      height: 24px;
-      border-radius: 0.25rem;
-      transition: width 0.5s ease;
-    }
-    
-    .bar-value {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: #1e293b;
-    }
-    
-    /* Metrics List */
-    .metrics-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-    
-    .metric-item {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    
-    .metric-info {
-      display: flex;
-      justify-content: space-between;
-    }
-    
-    .metric-label {
-      font-size: 0.875rem;
-      color: #64748b;
-    }
-    
-    .metric-value {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: #1e293b;
-    }
-    
-    .metric-bar {
-      height: 8px;
-      background: #e2e8f0;
+      height: 20px;
+      background: #f4f4f5;
       border-radius: 4px;
       overflow: hidden;
     }
-    
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #7c3aed, #a855f7);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .bar-value { font-size: 12px; font-weight: 600; color: #18181b; width: 30px; }
+
+    /* Metrics */
+    .metrics { display: flex; flex-direction: column; gap: 14px; }
+
+    .metric-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #3f3f46;
+    }
+
+    .metric-value { font-weight: 600; color: #18181b; }
+
+    .metric-bar {
+      height: 6px;
+      background: #f4f4f5;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
     .metric-fill {
       height: 100%;
-      border-radius: 4px;
-      transition: width 0.5s ease;
+      border-radius: 3px;
+      transition: width 0.3s ease;
     }
-    
-    /* Line Chart */
-    .line-chart {
+
+    .metric-fill.yellow { background: #f59e0b; }
+    .metric-fill.purple { background: #7c3aed; }
+    .metric-fill.green { background: #22c55e; }
+
+    /* Column Chart */
+    .column-chart {
       display: flex;
       align-items: flex-end;
       justify-content: space-between;
-      height: 200px;
-      padding-top: 1rem;
+      height: 140px;
+      gap: 8px;
     }
-    
-    .chart-column {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+
+    .column-item {
       flex: 1;
-      gap: 0.5rem;
-    }
-    
-    .column-bar {
-      width: 40px;
-      background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
-      border-radius: 0.25rem 0.25rem 0 0;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 0.5rem;
-      min-height: 20px;
-      transition: height 0.5s ease;
-    }
-    
-    .column-value {
-      color: white;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    
-    .column-label {
-      font-size: 0.75rem;
-      color: #64748b;
-    }
-    
-    /* Summary Card */
-    .summary-card {
-      background: white;
-      border-radius: 1rem;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .summary-card h3 {
-      margin: 0 0 1.5rem;
-      font-size: 1rem;
-      color: #1e293b;
-    }
-    
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1.5rem;
-    }
-    
-    .summary-item {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem;
-      background: #f8fafc;
-      border-radius: 0.75rem;
-    }
-    
-    .summary-icon {
-      font-size: 1.5rem;
-    }
-    
-    .summary-content {
       display: flex;
       flex-direction: column;
+      align-items: center;
+      gap: 6px;
     }
-    
-    .summary-value {
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #1e293b;
+
+    .column-bar {
+      width: 100%;
+      max-width: 40px;
+      background: linear-gradient(180deg, #7c3aed, #a855f7);
+      border-radius: 4px 4px 0 0;
+      display: flex;
+      justify-content: center;
+      padding-top: 6px;
+      min-height: 20px;
+      transition: height 0.3s ease;
     }
-    
-    .summary-label {
-      font-size: 0.75rem;
-      color: #64748b;
-    }
-    
-    .no-data {
-      color: #94a3b8;
-      text-align: center;
-      padding: 2rem;
-    }
-    
-    .fade-in { animation: fadeIn 0.3s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .column-value { font-size: 10px; font-weight: 600; color: white; }
+    .column-label { font-size: 10px; color: #71717a; }
   `]
 })
 export class ReportsComponent implements OnInit {
@@ -558,92 +385,69 @@ export class ReportsComponent implements OnInit {
   
   recruitmentFunnel = signal<{status: string; label: string; count: number; color: string}[]>([]);
   employeesByDept = signal<{name: string; count: number}[]>([]);
-  maxEmployeesInDept = signal(0);
   conversionRates = signal({toScreening: 0, toInterview: 0, toHired: 0});
   hiringsByMonth = signal<{month: string; count: number}[]>([]);
-  
-  avgTimeToHire = signal(0);
-  totalHired = signal(0);
-  pendingCandidates = signal(0);
   successRate = signal(0);
 
   constructor(private http: HttpClient) {}
 
-  ngOnInit(): void {
-    this.loadAllData();
-  }
+  ngOnInit(): void { this.loadAllData(); }
 
   loadAllData(): void {
-    // Load stats
     this.http.get<DashboardStats>(`${this.API_URL}/dashboard/stats`).subscribe({
       next: (data) => this.stats.set(data)
     });
 
-    // Load candidates
     this.http.get<Candidate[]>(`${this.API_URL}/candidates`).subscribe({
       next: (data) => {
         this.candidates.set(data);
-        this.calculateRecruitmentFunnel(data);
-        this.calculateConversionRates(data);
-        this.calculateMetrics(data);
+        this.calculateFunnel(data);
+        this.calculateConversion(data);
+        this.calculateSuccess(data);
       }
     });
 
-    // Load employees
     this.http.get<Employee[]>(`${this.API_URL}/employees`).subscribe({
       next: (data) => {
         this.employees.set(data);
-        this.calculateHiringsByMonth(data);
+        this.calculateHirings(data);
       }
     });
 
-    // Load departments
     this.http.get<Department[]>(`${this.API_URL}/departments`).subscribe({
       next: (data) => {
         this.departments.set(data);
-        this.calculateEmployeesByDept();
+        this.calculateByDept();
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
     });
   }
 
-  calculateRecruitmentFunnel(candidates: Candidate[]): void {
+  calculateFunnel(candidates: Candidate[]): void {
     const stages = [
       { status: 'NEW', label: 'Novos', color: '#3b82f6' },
       { status: 'SCREENING', label: 'Triagem', color: '#f59e0b' },
-      { status: 'INTERVIEW', label: 'Entrevista', color: '#8b5cf6' },
-      { status: 'HIRED', label: 'Contratados', color: '#10b981' },
+      { status: 'INTERVIEW', label: 'Entrevista', color: '#7c3aed' },
+      { status: 'HIRED', label: 'Contratados', color: '#22c55e' },
       { status: 'REJECTED', label: 'Rejeitados', color: '#ef4444' }
     ];
-
-    const funnel = stages.map(stage => ({
-      ...stage,
-      count: candidates.filter(c => c.status === stage.status).length
-    }));
-
-    this.recruitmentFunnel.set(funnel);
+    this.recruitmentFunnel.set(stages.map(s => ({ ...s, count: candidates.filter(c => c.status === s.status).length })));
   }
 
-  calculateEmployeesByDept(): void {
-    const employees = this.employees();
-    const departments = this.departments();
-    
-    const byDept = departments.map(dept => ({
-      name: dept.name,
-      count: employees.filter(e => e.department?.id === dept.id).length
-    })).filter(d => d.count > 0).sort((a, b) => b.count - a.count);
-
+  calculateByDept(): void {
+    const emps = this.employees();
+    const depts = this.departments();
+    const byDept = depts.map(d => ({ name: d.name, count: emps.filter(e => e.department?.id === d.id).length }))
+      .filter(d => d.count > 0).sort((a, b) => b.count - a.count);
     this.employeesByDept.set(byDept);
-    this.maxEmployeesInDept.set(Math.max(...byDept.map(d => d.count), 1));
   }
 
-  calculateConversionRates(candidates: Candidate[]): void {
+  calculateConversion(candidates: Candidate[]): void {
     const total = candidates.length || 1;
     const screening = candidates.filter(c => ['SCREENING', 'INTERVIEW', 'HIRED'].includes(c.status)).length;
     const interview = candidates.filter(c => ['INTERVIEW', 'HIRED'].includes(c.status)).length;
     const hired = candidates.filter(c => c.status === 'HIRED').length;
-
     this.conversionRates.set({
       toScreening: Math.round((screening / total) * 100),
       toInterview: Math.round((interview / Math.max(screening, 1)) * 100),
@@ -651,60 +455,40 @@ export class ReportsComponent implements OnInit {
     });
   }
 
-  calculateHiringsByMonth(employees: Employee[]): void {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  calculateHirings(employees: Employee[]): void {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
     const now = new Date();
-    const last6Months = [];
-
+    const last6 = [];
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = months[date.getMonth()];
       const count = employees.filter(e => {
         if (!e.hireDate) return false;
-        const hireDate = new Date(e.hireDate);
-        return hireDate.getMonth() === date.getMonth() && hireDate.getFullYear() === date.getFullYear();
+        const hd = new Date(e.hireDate);
+        return hd.getMonth() === date.getMonth() && hd.getFullYear() === date.getFullYear();
       }).length;
-      last6Months.push({ month: monthName, count });
+      last6.push({ month: months[date.getMonth()] || 'N/A', count });
     }
-
-    this.hiringsByMonth.set(last6Months);
+    this.hiringsByMonth.set(last6);
   }
 
-  calculateMetrics(candidates: Candidate[]): void {
-    const hired = candidates.filter(c => c.status === 'HIRED');
-    const pending = candidates.filter(c => ['NEW', 'SCREENING', 'INTERVIEW'].includes(c.status));
+  calculateSuccess(candidates: Candidate[]): void {
+    const hired = candidates.filter(c => c.status === 'HIRED').length;
     const total = candidates.length || 1;
-
-    this.totalHired.set(hired.length);
-    this.pendingCandidates.set(pending.length);
-    this.successRate.set(Math.round((hired.length / total) * 100));
-    
-    // Simulated average time to hire (would need actual dates in real app)
-    this.avgTimeToHire.set(Math.floor(Math.random() * 20) + 10);
+    this.successRate.set(Math.round((hired / total) * 100));
   }
 
   getFunnelWidth(count: number): number {
     const max = Math.max(...this.recruitmentFunnel().map(s => s.count), 1);
-    return Math.max((count / max) * 100, 15);
+    return Math.max((count / max) * 100, 10);
   }
 
-  getBarWidth(count: number, max: number): number {
+  getBarWidth(count: number): number {
+    const max = Math.max(...this.employeesByDept().map(d => d.count), 1);
     return Math.max((count / max) * 100, 10);
   }
 
   getColumnHeight(count: number): number {
     const max = Math.max(...this.hiringsByMonth().map(m => m.count), 1);
-    return Math.max((count / max) * 100, 10);
-  }
-
-  getRandomColor(seed: string): string {
-    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
-    const index = seed.charCodeAt(0) % colors.length;
-    return colors[index];
-  }
-
-  exportReport(): void {
-    alert('Funcionalidade de exportação PDF em desenvolvimento!');
+    return Math.max((count / max) * 100, 15);
   }
 }
-

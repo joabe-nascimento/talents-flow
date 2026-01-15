@@ -18,7 +18,6 @@ interface VacationRequest {
   type: 'VACATION' | 'SICK_LEAVE' | 'PERSONAL' | 'MATERNITY' | 'PATERNITY';
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   reason: string;
-  createdAt: string;
   days: number;
 }
 
@@ -27,43 +26,55 @@ interface VacationRequest {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page fade-in">
-      <div class="page-header">
+    <div class="page">
+      <header class="header">
         <div>
-          <h1>Gestão de Férias e Ausências</h1>
-          <p>Gerencie solicitações de férias e afastamentos</p>
+          <h1>Férias e Ausências</h1>
+          <p>Gerencie solicitações</p>
         </div>
-        <button class="btn btn-primary" (click)="openModal()">
-          + Nova Solicitação
+        <button class="btn-primary" (click)="openModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nova Solicitação
         </button>
-      </div>
+      </header>
 
-      <!-- Stats Cards -->
-      <div class="stats-grid">
-        <div class="stat-card pending">
-          <span class="stat-icon">⏳</span>
-          <div class="stat-content">
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-icon yellow">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12,6 12,12 16,14"/>
+            </svg>
+          </div>
+          <div class="stat-info">
             <span class="stat-value">{{ pendingCount() }}</span>
             <span class="stat-label">Pendentes</span>
           </div>
         </div>
-        <div class="stat-card approved">
-          <span class="stat-icon">✅</span>
-          <div class="stat-content">
+        <div class="stat-card">
+          <div class="stat-icon green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22,4 12,14.01 9,11.01"/>
+            </svg>
+          </div>
+          <div class="stat-info">
             <span class="stat-value">{{ approvedCount() }}</span>
             <span class="stat-label">Aprovadas</span>
           </div>
         </div>
-        <div class="stat-card rejected">
-          <span class="stat-icon">❌</span>
-          <div class="stat-content">
-            <span class="stat-value">{{ rejectedCount() }}</span>
-            <span class="stat-label">Rejeitadas</span>
+        <div class="stat-card">
+          <div class="stat-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
           </div>
-        </div>
-        <div class="stat-card vacation">
-          <span class="stat-icon">🏖️</span>
-          <div class="stat-content">
+          <div class="stat-info">
             <span class="stat-value">{{ onVacationCount() }}</span>
             <span class="stat-label">Em Férias Hoje</span>
           </div>
@@ -72,170 +83,124 @@ interface VacationRequest {
 
       <!-- Tabs -->
       <div class="tabs">
-        <button 
-          class="tab" 
-          [class.active]="activeTab() === 'pending'"
-          (click)="activeTab.set('pending')"
-        >
+        <button class="tab" [class.active]="activeTab() === 'pending'" (click)="activeTab.set('pending')">
           Pendentes ({{ pendingCount() }})
         </button>
-        <button 
-          class="tab" 
-          [class.active]="activeTab() === 'approved'"
-          (click)="activeTab.set('approved')"
-        >
+        <button class="tab" [class.active]="activeTab() === 'approved'" (click)="activeTab.set('approved')">
           Aprovadas
         </button>
-        <button 
-          class="tab" 
-          [class.active]="activeTab() === 'all'"
-          (click)="activeTab.set('all')"
-        >
+        <button class="tab" [class.active]="activeTab() === 'all'" (click)="activeTab.set('all')">
           Todas
-        </button>
-        <button 
-          class="tab" 
-          [class.active]="activeTab() === 'calendar'"
-          (click)="activeTab.set('calendar')"
-        >
-          📅 Calendário
         </button>
       </div>
 
-      @if (loading()) {
-        <div class="loading-state">
-          <div class="spinner"></div>
-        </div>
-      } @else if (activeTab() === 'calendar') {
-        <!-- Calendar View -->
-        <div class="calendar-view">
-          <div class="calendar-header">
-            <button class="btn-nav" (click)="prevMonth()">◀</button>
-            <h3>{{ currentMonthName() }} {{ currentYear() }}</h3>
-            <button class="btn-nav" (click)="nextMonth()">▶</button>
+      <!-- List -->
+      <div class="card">
+        @if (filteredRequests().length === 0) {
+          <div class="empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+            <span>Nenhuma solicitação</span>
           </div>
-          <div class="calendar-grid">
-            <div class="calendar-day-header">Dom</div>
-            <div class="calendar-day-header">Seg</div>
-            <div class="calendar-day-header">Ter</div>
-            <div class="calendar-day-header">Qua</div>
-            <div class="calendar-day-header">Qui</div>
-            <div class="calendar-day-header">Sex</div>
-            <div class="calendar-day-header">Sáb</div>
-            @for (day of calendarDays(); track $index) {
-              <div 
-                class="calendar-day" 
-                [class.other-month]="!day.currentMonth"
-                [class.today]="day.isToday"
-                [class.has-events]="day.events.length > 0"
-              >
-                <span class="day-number">{{ day.day }}</span>
-                @for (event of day.events.slice(0, 2); track event.id) {
-                  <div class="day-event" [class]="'event-' + event.type.toLowerCase()">
-                    {{ event.employee.name.split(' ')[0] }}
+        } @else {
+          <div class="list">
+            @for (req of filteredRequests(); track req.id) {
+              <div class="request-item">
+                <div class="avatar">{{ getInitials(req.employee.name) }}</div>
+                <div class="request-info">
+                  <div class="request-header">
+                    <span class="request-name">{{ req.employee.name }}</span>
+                    <span class="badge type-{{ req.type.toLowerCase() }}">{{ getTypeLabel(req.type) }}</span>
                   </div>
-                }
-                @if (day.events.length > 2) {
-                  <div class="day-more">+{{ day.events.length - 2 }} mais</div>
-                }
+                  <span class="request-dept">{{ req.employee.department?.name || 'Sem departamento' }}</span>
+                  <div class="request-dates">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="4" width="18" height="18" rx="2"/>
+                      <path d="M16 2v4M8 2v4M3 10h18"/>
+                    </svg>
+                    {{ formatDate(req.startDate) }} - {{ formatDate(req.endDate) }}
+                    <span class="days">({{ req.days }} dias)</span>
+                  </div>
+                </div>
+                <div class="request-actions">
+                  @if (req.status === 'PENDING') {
+                    <button class="btn-approve" (click)="approve(req)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20,6 9,17 4,12"/>
+                      </svg>
+                    </button>
+                    <button class="btn-reject" (click)="reject(req)">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  } @else {
+                    <span class="status-badge" [class]="req.status.toLowerCase()">
+                      {{ req.status === 'APPROVED' ? 'Aprovada' : 'Rejeitada' }}
+                    </span>
+                  }
+                </div>
               </div>
             }
           </div>
-        </div>
-      } @else {
-        <!-- List View -->
-        <div class="card">
-          @if (filteredRequests().length === 0) {
-            <div class="empty-state">
-              <span class="empty-icon">📋</span>
-              <p>Nenhuma solicitação encontrada</p>
-            </div>
-          } @else {
-            <div class="requests-list">
-              @for (request of filteredRequests(); track request.id) {
-                <div class="request-card" [class]="'status-' + request.status.toLowerCase()">
-                  <div class="request-avatar">
-                    {{ getInitials(request.employee.name) }}
-                  </div>
-                  <div class="request-info">
-                    <div class="request-header">
-                      <h4>{{ request.employee.name }}</h4>
-                      <span class="request-type" [class]="'type-' + request.type.toLowerCase()">
-                        {{ getTypeLabel(request.type) }}
-                      </span>
-                    </div>
-                    <p class="request-dept">{{ request.employee.department?.name || 'Sem departamento' }}</p>
-                    <p class="request-dates">
-                      📅 {{ formatDate(request.startDate) }} - {{ formatDate(request.endDate) }}
-                      <span class="request-days">({{ request.days }} dias)</span>
-                    </p>
-                    @if (request.reason) {
-                      <p class="request-reason">💬 {{ request.reason }}</p>
-                    }
-                  </div>
-                  <div class="request-actions">
-                    @if (request.status === 'PENDING') {
-                      <button class="btn btn-approve" (click)="approve(request)">✓ Aprovar</button>
-                      <button class="btn btn-reject" (click)="reject(request)">✗ Rejeitar</button>
-                    } @else {
-                      <span class="status-badge" [class]="'badge-' + request.status.toLowerCase()">
-                        {{ request.status === 'APPROVED' ? 'Aprovada' : 'Rejeitada' }}
-                      </span>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          }
-        </div>
-      }
+        }
+      </div>
     </div>
 
-    <!-- Modal -->
     @if (showModal()) {
-      <div class="modal-overlay" (click)="closeModal()">
+      <div class="overlay" (click)="closeModal()">
         <div class="modal" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h2>Nova Solicitação</h2>
-            <button class="btn-close" (click)="closeModal()">×</button>
+            <button class="btn-close" (click)="closeModal()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
           <form (ngSubmit)="save()">
-            <div class="form-group">
-              <label>Funcionário</label>
-              <select [(ngModel)]="form.employeeId" name="employeeId" required>
-                <option [ngValue]="null">Selecione...</option>
-                @for (emp of employees(); track emp.id) {
-                  <option [ngValue]="emp.id">{{ emp.name }}</option>
-                }
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Tipo</label>
-              <select [(ngModel)]="form.type" name="type" required>
-                <option value="VACATION">🏖️ Férias</option>
-                <option value="SICK_LEAVE">🏥 Licença Médica</option>
-                <option value="PERSONAL">👤 Pessoal</option>
-                <option value="MATERNITY">👶 Maternidade</option>
-                <option value="PATERNITY">👨‍👧 Paternidade</option>
-              </select>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Data Início</label>
-                <input type="date" [(ngModel)]="form.startDate" name="startDate" required />
+            <div class="modal-body">
+              <div class="field">
+                <label>Funcionário</label>
+                <select [(ngModel)]="form.employeeId" name="employeeId" required>
+                  <option [ngValue]="null">Selecione...</option>
+                  @for (emp of employees(); track emp.id) {
+                    <option [ngValue]="emp.id">{{ emp.name }}</option>
+                  }
+                </select>
               </div>
-              <div class="form-group">
-                <label>Data Fim</label>
-                <input type="date" [(ngModel)]="form.endDate" name="endDate" required />
+              <div class="field">
+                <label>Tipo</label>
+                <select [(ngModel)]="form.type" name="type" required>
+                  <option value="VACATION">Férias</option>
+                  <option value="SICK_LEAVE">Licença Médica</option>
+                  <option value="PERSONAL">Pessoal</option>
+                  <option value="MATERNITY">Maternidade</option>
+                  <option value="PATERNITY">Paternidade</option>
+                </select>
               </div>
-            </div>
-            <div class="form-group">
-              <label>Motivo (opcional)</label>
-              <textarea [(ngModel)]="form.reason" name="reason" rows="3" placeholder="Descreva o motivo..."></textarea>
+              <div class="row">
+                <div class="field">
+                  <label>Data Início</label>
+                  <input type="date" [(ngModel)]="form.startDate" name="startDate" required/>
+                </div>
+                <div class="field">
+                  <label>Data Fim</label>
+                  <input type="date" [(ngModel)]="form.endDate" name="endDate" required/>
+                </div>
+              </div>
+              <div class="field">
+                <label>Motivo (opcional)</label>
+                <textarea [(ngModel)]="form.reason" name="reason" rows="2" placeholder="Descreva o motivo..."></textarea>
+              </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
-              <button type="submit" class="btn btn-primary">Salvar</button>
+              <button type="button" class="btn-secondary" (click)="closeModal()">Cancelar</button>
+              <button type="submit" class="btn-primary">Salvar</button>
             </div>
           </form>
         </div>
@@ -243,367 +208,313 @@ interface VacationRequest {
     }
   `,
   styles: [`
-    .page { max-width: 1200px; }
-    
-    .page-header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      margin-bottom: 1.5rem; 
-    }
-    .page-header h1 { margin: 0; font-size: 1.5rem; color: #1e293b; }
-    .page-header p { margin: 0.25rem 0 0; color: #64748b; }
-    
-    .btn { 
-      padding: 0.5rem 1rem; 
-      border-radius: 0.5rem; 
-      cursor: pointer; 
-      border: none; 
-      font-size: 0.875rem;
-      transition: all 0.2s;
-    }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-primary:hover { background: #2563eb; }
-    .btn-secondary { background: #e2e8f0; color: #475569; }
-    .btn-approve { background: #dcfce7; color: #166534; }
-    .btn-approve:hover { background: #bbf7d0; }
-    .btn-reject { background: #fee2e2; color: #991b1b; }
-    .btn-reject:hover { background: #fecaca; }
-    
-    /* Stats Grid */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    
-    @media (max-width: 768px) {
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    
-    .stat-card {
-      background: white;
-      border-radius: 0.75rem;
-      padding: 1rem;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      border-left: 4px solid;
-    }
-    
-    .stat-card.pending { border-color: #f59e0b; }
-    .stat-card.approved { border-color: #10b981; }
-    .stat-card.rejected { border-color: #ef4444; }
-    .stat-card.vacation { border-color: #3b82f6; }
-    
-    .stat-icon { font-size: 1.5rem; }
-    .stat-content { display: flex; flex-direction: column; }
-    .stat-value { font-size: 1.5rem; font-weight: 700; color: #1e293b; }
-    .stat-label { font-size: 0.75rem; color: #64748b; }
-    
-    /* Tabs */
-    .tabs {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      border-bottom: 1px solid #e2e8f0;
-      padding-bottom: 0.5rem;
-    }
-    
-    .tab {
-      padding: 0.5rem 1rem;
-      background: none;
-      border: none;
-      color: #64748b;
-      cursor: pointer;
-      font-size: 0.875rem;
-      border-radius: 0.5rem;
-      transition: all 0.2s;
-    }
-    
-    .tab:hover { background: #f1f5f9; }
-    .tab.active { background: #3b82f6; color: white; }
-    
-    /* Card */
-    .card {
-      background: white;
-      border-radius: 0.75rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      overflow: hidden;
-    }
-    
-    .loading-state, .empty-state { 
-      padding: 3rem; 
-      text-align: center; 
-      color: #64748b;
-    }
-    .spinner { 
-      width: 32px; 
-      height: 32px; 
-      border: 3px solid #e2e8f0; 
-      border-top-color: #3b82f6; 
-      border-radius: 50%; 
-      animation: spin 0.8s linear infinite; 
-      margin: 0 auto;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .empty-icon { font-size: 3rem; display: block; margin-bottom: 1rem; }
-    
-    /* Requests List */
-    .requests-list {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .request-card {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #e2e8f0;
-      transition: background 0.2s;
-    }
-    
-    .request-card:hover { background: #f8fafc; }
-    .request-card:last-child { border-bottom: none; }
-    
-    .request-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-    
-    .request-info { flex: 1; }
-    
-    .request-header {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    
-    .request-header h4 { margin: 0; font-size: 1rem; color: #1e293b; }
-    
-    .request-type {
-      padding: 0.25rem 0.5rem;
-      border-radius: 0.25rem;
-      font-size: 0.7rem;
-      font-weight: 500;
-    }
-    
-    .type-vacation { background: #dbeafe; color: #1e40af; }
-    .type-sick_leave { background: #fef3c7; color: #92400e; }
-    .type-personal { background: #e0e7ff; color: #3730a3; }
-    .type-maternity { background: #fce7f3; color: #9d174d; }
-    .type-paternity { background: #d1fae5; color: #065f46; }
-    
-    .request-dept { margin: 0.25rem 0 0; font-size: 0.75rem; color: #64748b; }
-    .request-dates { margin: 0.5rem 0 0; font-size: 0.875rem; color: #475569; }
-    .request-days { color: #94a3b8; font-size: 0.75rem; }
-    .request-reason { margin: 0.25rem 0 0; font-size: 0.75rem; color: #64748b; font-style: italic; }
-    
-    .request-actions {
-      display: flex;
-      gap: 0.5rem;
-      flex-shrink: 0;
-    }
-    
-    .status-badge {
-      padding: 0.5rem 1rem;
-      border-radius: 1rem;
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-    
-    .badge-approved { background: #dcfce7; color: #166534; }
-    .badge-rejected { background: #fee2e2; color: #991b1b; }
-    
-    /* Calendar View */
-    .calendar-view {
-      background: white;
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    
-    .calendar-header {
+    .page { max-width: 900px; }
+
+    .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1rem;
+      margin-bottom: 20px;
     }
-    
-    .calendar-header h3 { margin: 0; color: #1e293b; }
-    
-    .btn-nav {
-      background: #f1f5f9;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      cursor: pointer;
-      color: #475569;
-    }
-    
-    .btn-nav:hover { background: #e2e8f0; }
-    
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 1px;
-      background: #e2e8f0;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      overflow: hidden;
-    }
-    
-    .calendar-day-header {
-      background: #f8fafc;
-      padding: 0.75rem;
-      text-align: center;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #64748b;
-    }
-    
-    .calendar-day {
-      background: white;
-      min-height: 80px;
-      padding: 0.5rem;
+
+    .header h1 { font-size: 20px; font-weight: 600; color: #18181b; margin: 0; }
+    .header p { font-size: 13px; color: #71717a; margin: 4px 0 0; }
+
+    .btn-primary {
       display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: #7c3aed;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
     }
-    
-    .calendar-day.other-month { background: #f8fafc; }
-    .calendar-day.other-month .day-number { color: #94a3b8; }
-    .calendar-day.today { background: #eff6ff; }
-    .calendar-day.today .day-number { 
-      background: #3b82f6; 
-      color: white; 
-      border-radius: 50%;
-      width: 24px;
-      height: 24px;
+
+    .btn-primary:hover { background: #6d28d9; }
+    .btn-primary svg { width: 16px; height: 16px; }
+
+    .btn-secondary {
+      padding: 8px 14px;
+      background: #f4f4f5;
+      color: #3f3f46;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #f4f4f5;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stat-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    
-    .day-number {
-      font-size: 0.875rem;
+
+    .stat-icon svg { width: 18px; height: 18px; }
+
+    .stat-icon.yellow { background: #fef3c7; color: #d97706; }
+    .stat-icon.green { background: #dcfce7; color: #16a34a; }
+    .stat-icon.blue { background: #dbeafe; color: #2563eb; }
+
+    .stat-info { flex: 1; }
+    .stat-value { display: block; font-size: 20px; font-weight: 600; color: #18181b; }
+    .stat-label { display: block; font-size: 11px; color: #71717a; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    .tab {
+      padding: 8px 14px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
       font-weight: 500;
-      color: #1e293b;
+      color: #71717a;
+      cursor: pointer;
     }
-    
-    .day-event {
-      font-size: 0.65rem;
-      padding: 0.125rem 0.25rem;
-      border-radius: 0.25rem;
-      white-space: nowrap;
+
+    .tab:hover { background: #f4f4f5; }
+    .tab.active { background: #7c3aed; color: white; }
+
+    /* Card */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #f4f4f5;
       overflow: hidden;
-      text-overflow: ellipsis;
     }
-    
-    .event-vacation { background: #dbeafe; color: #1e40af; }
-    .event-sick_leave { background: #fef3c7; color: #92400e; }
-    .event-personal { background: #e0e7ff; color: #3730a3; }
-    .event-maternity { background: #fce7f3; color: #9d174d; }
-    .event-paternity { background: #d1fae5; color: #065f46; }
-    
-    .day-more {
-      font-size: 0.6rem;
-      color: #64748b;
+
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 60px 20px;
+      color: #a1a1aa;
     }
-    
+
+    .empty svg { width: 40px; height: 40px; }
+
+    .list { }
+
+    .request-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #f4f4f5;
+    }
+
+    .request-item:last-child { border-bottom: none; }
+    .request-item:hover { background: #fafafa; }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .request-info { flex: 1; }
+
+    .request-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .request-name { font-size: 13px; font-weight: 500; color: #18181b; }
+
+    .badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .type-vacation { background: #dbeafe; color: #1e40af; }
+    .type-sick_leave { background: #fef3c7; color: #92400e; }
+    .type-personal { background: #f3e8ff; color: #7c3aed; }
+    .type-maternity { background: #fce7f3; color: #be185d; }
+    .type-paternity { background: #d1fae5; color: #065f46; }
+
+    .request-dept { font-size: 11px; color: #71717a; display: block; margin-bottom: 4px; }
+
+    .request-dates {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #3f3f46;
+    }
+
+    .request-dates svg { width: 14px; height: 14px; color: #71717a; }
+    .days { font-size: 11px; color: #71717a; }
+
+    .request-actions { display: flex; gap: 6px; }
+
+    .btn-approve, .btn-reject {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-approve { background: #dcfce7; color: #16a34a; }
+    .btn-approve:hover { background: #bbf7d0; }
+    .btn-reject { background: #fee2e2; color: #dc2626; }
+    .btn-reject:hover { background: #fecaca; }
+    .btn-approve svg, .btn-reject svg { width: 16px; height: 16px; }
+
+    .status-badge {
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .status-badge.approved { background: #dcfce7; color: #16a34a; }
+    .status-badge.rejected { background: #fee2e2; color: #dc2626; }
+
     /* Modal */
-    .modal-overlay { 
-      position: fixed; 
-      inset: 0; 
-      background: rgba(0,0,0,0.5); 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      z-index: 1000; 
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(2px);
     }
-    .modal { 
-      background: white; 
-      border-radius: 0.75rem; 
-      width: 100%; 
-      max-width: 500px; 
+
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
     }
-    .modal-header { 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      padding: 1rem 1.5rem; 
-      border-bottom: 1px solid #e2e8f0; 
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #f4f4f5;
     }
-    .modal-header h2 { margin: 0; font-size: 1.25rem; }
-    .btn-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; }
-    .modal form { padding: 1.5rem; }
-    .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151; }
-    .form-group input, .form-group select, .form-group textarea { 
-      width: 100%; 
-      padding: 0.75rem; 
-      border: 1px solid #e2e8f0; 
-      border-radius: 0.5rem; 
-      font-size: 0.875rem;
+
+    .modal-header h2 { font-size: 15px; font-weight: 600; margin: 0; }
+
+    .btn-close {
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #71717a;
     }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; }
-    
-    .fade-in { animation: fadeIn 0.3s ease-out; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .btn-close:hover { background: #f4f4f5; }
+    .btn-close svg { width: 16px; height: 16px; }
+
+    .modal-body { padding: 20px; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    .field label { display: block; font-size: 12px; font-weight: 500; color: #3f3f46; margin-bottom: 6px; }
+
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e4e4e7;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: none;
+    }
+
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 16px 20px;
+      border-top: 1px solid #f4f4f5;
+    }
   `]
 })
 export class VacationManagementComponent implements OnInit {
   private readonly API_URL = 'http://localhost:8085/api';
   
-  loading = signal(true);
   employees = signal<Employee[]>([]);
   requests = signal<VacationRequest[]>([]);
   showModal = signal(false);
-  activeTab = signal<'pending' | 'approved' | 'all' | 'calendar'>('pending');
+  activeTab = signal<'pending' | 'approved' | 'all'>('pending');
   
-  currentMonth = signal(new Date().getMonth());
-  currentYear = signal(new Date().getFullYear());
-  calendarDays = signal<any[]>([]);
-  
-  form: any = {
-    employeeId: null,
-    type: 'VACATION',
-    startDate: '',
-    endDate: '',
-    reason: ''
-  };
-  
-  private readonly months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  form: any = { employeeId: null, type: 'VACATION', startDate: '', endDate: '', reason: '' };
 
   constructor(private http: HttpClient) {}
 
-  ngOnInit(): void {
-    this.loadData();
-    this.generateCalendar();
-  }
+  ngOnInit(): void { this.loadData(); }
 
   loadData(): void {
-    // Load employees
     this.http.get<Employee[]>(`${this.API_URL}/employees`).subscribe({
       next: (data) => this.employees.set(data)
     });
-
-    // Simulate vacation requests (would come from API in real app)
     this.generateSampleRequests();
-    this.loading.set(false);
   }
 
   generateSampleRequests(): void {
@@ -611,140 +522,27 @@ export class VacationManagementComponent implements OnInit {
       { id: 1, name: 'Maria Silva', email: 'maria@email.com', department: { id: 1, name: 'RH' } },
       { id: 2, name: 'João Santos', email: 'joao@email.com', department: { id: 2, name: 'TI' } },
       { id: 3, name: 'Ana Costa', email: 'ana@email.com', department: { id: 3, name: 'Financeiro' } },
-      { id: 4, name: 'Pedro Oliveira', email: 'pedro@email.com', department: { id: 2, name: 'TI' } },
     ];
 
-    const requests: VacationRequest[] = [
-      {
-        id: 1,
-        employee: employees[0],
-        startDate: '2026-01-20',
-        endDate: '2026-01-30',
-        type: 'VACATION',
-        status: 'PENDING',
-        reason: 'Férias anuais',
-        createdAt: '2026-01-10',
-        days: 10
-      },
-      {
-        id: 2,
-        employee: employees[1],
-        startDate: '2026-02-01',
-        endDate: '2026-02-05',
-        type: 'SICK_LEAVE',
-        status: 'APPROVED',
-        reason: 'Consulta médica e recuperação',
-        createdAt: '2026-01-12',
-        days: 5
-      },
-      {
-        id: 3,
-        employee: employees[2],
-        startDate: '2026-01-25',
-        endDate: '2026-01-26',
-        type: 'PERSONAL',
-        status: 'PENDING',
-        reason: 'Assuntos pessoais',
-        createdAt: '2026-01-14',
-        days: 2
-      },
-      {
-        id: 4,
-        employee: employees[3],
-        startDate: '2026-01-15',
-        endDate: '2026-01-18',
-        type: 'VACATION',
-        status: 'APPROVED',
-        reason: '',
-        createdAt: '2026-01-05',
-        days: 4
-      }
-    ];
-
-    this.requests.set(requests);
+    this.requests.set([
+      { id: 1, employee: employees[0], startDate: '2026-01-20', endDate: '2026-01-30', type: 'VACATION', status: 'PENDING', reason: '', days: 10 },
+      { id: 2, employee: employees[1], startDate: '2026-02-01', endDate: '2026-02-05', type: 'SICK_LEAVE', status: 'APPROVED', reason: '', days: 5 },
+      { id: 3, employee: employees[2], startDate: '2026-01-25', endDate: '2026-01-26', type: 'PERSONAL', status: 'PENDING', reason: '', days: 2 },
+    ]);
   }
 
   filteredRequests(): VacationRequest[] {
     const tab = this.activeTab();
-    const reqs = this.requests();
-    
-    if (tab === 'pending') return reqs.filter(r => r.status === 'PENDING');
-    if (tab === 'approved') return reqs.filter(r => r.status === 'APPROVED');
-    return reqs;
+    if (tab === 'pending') return this.requests().filter(r => r.status === 'PENDING');
+    if (tab === 'approved') return this.requests().filter(r => r.status === 'APPROVED');
+    return this.requests();
   }
 
-  pendingCount(): number {
-    return this.requests().filter(r => r.status === 'PENDING').length;
-  }
-
-  approvedCount(): number {
-    return this.requests().filter(r => r.status === 'APPROVED').length;
-  }
-
-  rejectedCount(): number {
-    return this.requests().filter(r => r.status === 'REJECTED').length;
-  }
-
+  pendingCount(): number { return this.requests().filter(r => r.status === 'PENDING').length; }
+  approvedCount(): number { return this.requests().filter(r => r.status === 'APPROVED').length; }
   onVacationCount(): number {
     const today = new Date().toISOString().split('T')[0];
-    return this.requests().filter(r => 
-      r.status === 'APPROVED' && r.startDate <= today && r.endDate >= today
-    ).length;
-  }
-
-  currentMonthName(): string {
-    return this.months[this.currentMonth()];
-  }
-
-  prevMonth(): void {
-    if (this.currentMonth() === 0) {
-      this.currentMonth.set(11);
-      this.currentYear.update(y => y - 1);
-    } else {
-      this.currentMonth.update(m => m - 1);
-    }
-    this.generateCalendar();
-  }
-
-  nextMonth(): void {
-    if (this.currentMonth() === 11) {
-      this.currentMonth.set(0);
-      this.currentYear.update(y => y + 1);
-    } else {
-      this.currentMonth.update(m => m + 1);
-    }
-    this.generateCalendar();
-  }
-
-  generateCalendar(): void {
-    const year = this.currentYear();
-    const month = this.currentMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - firstDay.getDay());
-    
-    const days = [];
-    const today = new Date().toISOString().split('T')[0];
-    
-    for (let i = 0; i < 42; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
-      
-      const events = this.requests().filter(r => 
-        r.status === 'APPROVED' && dateStr >= r.startDate && dateStr <= r.endDate
-      );
-      
-      days.push({
-        day: date.getDate(),
-        currentMonth: date.getMonth() === month,
-        isToday: dateStr === today,
-        events
-      });
-    }
-    
-    this.calendarDays.set(days);
+    return this.requests().filter(r => r.status === 'APPROVED' && r.startDate <= today && r.endDate >= today).length;
   }
 
   getInitials(name: string): string {
@@ -752,17 +550,12 @@ export class VacationManagementComponent implements OnInit {
   }
 
   formatDate(dateStr: string): string {
-    const date = new Date(dateStr + 'T00:00:00');
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
   }
 
   getTypeLabel(type: string): string {
     const labels: Record<string, string> = {
-      'VACATION': '🏖️ Férias',
-      'SICK_LEAVE': '🏥 Licença Médica',
-      'PERSONAL': '👤 Pessoal',
-      'MATERNITY': '👶 Maternidade',
-      'PATERNITY': '👨‍👧 Paternidade'
+      'VACATION': 'Férias', 'SICK_LEAVE': 'Licença', 'PERSONAL': 'Pessoal', 'MATERNITY': 'Maternidade', 'PATERNITY': 'Paternidade'
     };
     return labels[type] || type;
   }
@@ -772,26 +565,18 @@ export class VacationManagementComponent implements OnInit {
     this.showModal.set(true);
   }
 
-  closeModal(): void {
-    this.showModal.set(false);
+  closeModal(): void { this.showModal.set(false); }
+
+  approve(req: VacationRequest): void {
+    this.requests.update(reqs => reqs.map(r => r.id === req.id ? { ...r, status: 'APPROVED' as const } : r));
   }
 
-  approve(request: VacationRequest): void {
-    this.requests.update(reqs => 
-      reqs.map(r => r.id === request.id ? { ...r, status: 'APPROVED' as const } : r)
-    );
-    this.generateCalendar();
-  }
-
-  reject(request: VacationRequest): void {
-    this.requests.update(reqs => 
-      reqs.map(r => r.id === request.id ? { ...r, status: 'REJECTED' as const } : r)
-    );
+  reject(req: VacationRequest): void {
+    this.requests.update(reqs => reqs.map(r => r.id === req.id ? { ...r, status: 'REJECTED' as const } : r));
   }
 
   save(): void {
     if (!this.form.employeeId || !this.form.startDate || !this.form.endDate) return;
-    
     const employee = this.employees().find(e => e.id === this.form.employeeId);
     if (!employee) return;
 
@@ -799,7 +584,7 @@ export class VacationManagementComponent implements OnInit {
     const end = new Date(this.form.endDate);
     const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-    const newRequest: VacationRequest = {
+    this.requests.update(reqs => [{
       id: Date.now(),
       employee,
       startDate: this.form.startDate,
@@ -807,12 +592,8 @@ export class VacationManagementComponent implements OnInit {
       type: this.form.type,
       status: 'PENDING',
       reason: this.form.reason,
-      createdAt: new Date().toISOString().split('T')[0],
       days
-    };
-
-    this.requests.update(reqs => [newRequest, ...reqs]);
+    }, ...reqs]);
     this.closeModal();
   }
 }
-

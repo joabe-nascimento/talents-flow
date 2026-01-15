@@ -21,3 +21,4 @@ public interface JobPositionRepository extends JpaRepository<JobPosition, Long> 
     Long countOpenPositions();
 }
 
+

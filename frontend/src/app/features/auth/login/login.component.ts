@@ -2,7 +2,18 @@ import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '@core/services/auth.service';
+import { HttpClient } from '@angular/common/http';
+
+const TOKEN_KEY = 'talentflow_token';
+const USER_KEY = 'talentflow_user';
+
+interface AuthResponse {
+  token: string;
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
 
 @Component({
   selector: 'app-login',
@@ -124,77 +135,144 @@ import { AuthService } from '@core/services/auth.service';
     }
 
     .login-container {
-      background: white;
-      border-radius: 16px;
-      padding: 2.5rem;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       position: relative;
-      z-index: 1;
+      z-index: 10;
+      background: white;
+      padding: 2.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 400px;
     }
 
     .login-header {
       text-align: center;
       margin-bottom: 2rem;
-    }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
+      .logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
 
-    .logo-icon {
-      font-size: 2rem;
-    }
+        .logo-icon {
+          font-size: 2rem;
+        }
 
-    .logo h1 {
-      font-size: 1.75rem;
-      background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 0;
-    }
+        h1 {
+          margin: 0;
+          font-size: 1.75rem;
+          background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+      }
 
-    .login-header p {
-      color: #64748b;
-      font-size: 0.9375rem;
+      p {
+        color: #64748b;
+        margin: 0;
+      }
     }
 
     .login-form {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 1.25rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+
+      label {
+        font-weight: 500;
+        color: #334155;
+        font-size: 0.875rem;
+      }
+
+      .form-control {
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+
+        &:focus {
+          outline: none;
+          border-color: #3b82f6;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+      }
+    }
+
+    .error-alert {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-size: 1rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
     }
 
     .btn-block {
       width: 100%;
-      padding: 0.875rem;
-      font-size: 1rem;
     }
 
-    .error-alert {
-      background: #fee2e2;
-      color: #991b1b;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      font-size: 0.875rem;
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .login-footer {
       margin-top: 1.5rem;
-      text-align: center;
+      padding-top: 1.5rem;
+      border-top: 1px solid #e2e8f0;
     }
 
     .demo-info {
-      font-size: 0.8125rem;
+      text-align: center;
+      font-size: 0.875rem;
       color: #64748b;
-      background: #f1f5f9;
-      padding: 0.75rem;
-      border-radius: 8px;
+      margin: 0;
     }
 
     .demo-info strong {
@@ -209,7 +287,7 @@ export class LoginComponent {
   error = signal('');
 
   constructor(
-    private authService: AuthService,
+    private http: HttpClient,
     private router: Router
   ) {}
 
@@ -222,8 +300,18 @@ export class LoginComponent {
     this.loading.set(true);
     this.error.set('');
 
-    this.authService.login({ email: this.email, password: this.password }).subscribe({
-      next: () => {
+    this.http.post<AuthResponse>('http://localhost:8085/api/auth/login', { 
+      email: this.email, 
+      password: this.password 
+    }).subscribe({
+      next: (response) => {
+        localStorage.setItem(TOKEN_KEY, response.token);
+        localStorage.setItem(USER_KEY, JSON.stringify({
+          id: response.id,
+          name: response.name,
+          email: response.email,
+          role: response.role
+        }));
         this.router.navigate(['/dashboard']);
       },
       error: (err) => {
@@ -233,4 +321,3 @@ export class LoginComponent {
     });
   }
 }
-

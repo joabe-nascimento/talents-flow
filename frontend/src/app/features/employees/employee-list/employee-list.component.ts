@@ -1,10 +1,22 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { EmployeeService } from '@core/services/employee.service';
-import { DepartmentService } from '@core/services/department.service';
-import { Employee, EmployeeStatus, Department, Role } from '@core/models';
-import { AuthService } from '@core/services/auth.service';
+import { HttpClient } from '@angular/common/http';
+
+interface Employee {
+  id: number;
+  name: string;
+  email: string;
+  position: string;
+  department: { id: number; name: string } | null;
+  status: string;
+  hireDate: string;
+}
+
+interface Department {
+  id: number;
+  name: string;
+}
 
 @Component({
   selector: 'app-employee-list',
@@ -17,11 +29,9 @@ import { AuthService } from '@core/services/auth.service';
           <h1>Funcionários</h1>
           <p>Gerencie os funcionários da empresa</p>
         </div>
-        @if (authService.isHR()) {
-          <button class="btn btn-primary" (click)="openModal()">
-            + Novo Funcionário
-          </button>
-        }
+        <button class="btn btn-primary" (click)="openModal()">
+          + Novo Funcionário
+        </button>
       </div>
 
       <div class="card">
@@ -44,36 +54,25 @@ import { AuthService } from '@core/services/auth.service';
                   <th>Cargo</th>
                   <th>Departamento</th>
                   <th>Status</th>
-                  @if (authService.isHR()) {
-                    <th>Ações</th>
-                  }
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 @for (emp of employees(); track emp.id) {
                   <tr>
-                    <td>
-                      <div class="d-flex align-center gap-2">
-                        <div class="avatar">{{ getInitials(emp.name) }}</div>
-                        {{ emp.name }}
-                      </div>
-                    </td>
+                    <td>{{ emp.name }}</td>
                     <td>{{ emp.email }}</td>
                     <td>{{ emp.position }}</td>
-                    <td>{{ emp.departmentName || '-' }}</td>
+                    <td>{{ emp.department?.name || '-' }}</td>
                     <td>
-                      <span [class]="'badge badge-' + getStatusClass(emp.status)">
-                        {{ getStatusLabel(emp.status) }}
+                      <span class="status-badge" [class]="'status-' + emp.status.toLowerCase()">
+                        {{ emp.status }}
                       </span>
                     </td>
-                    @if (authService.isHR()) {
-                      <td>
-                        <div class="actions">
-                          <button class="btn btn-icon" title="Editar" (click)="edit(emp)">✏️</button>
-                          <button class="btn btn-icon" title="Excluir" (click)="delete(emp)">🗑️</button>
-                        </div>
-                      </td>
-                    }
+                    <td>
+                      <button class="btn btn-icon" (click)="edit(emp)">✏️</button>
+                      <button class="btn btn-icon" (click)="delete(emp)">🗑️</button>
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -81,193 +80,123 @@ import { AuthService } from '@core/services/auth.service';
           }
         </div>
       </div>
-
-      <!-- Modal -->
-      @if (showModal()) {
-        <div class="modal-overlay" (click)="closeModal()">
-          <div class="modal" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2>{{ editing() ? 'Editar' : 'Novo' }} Funcionário</h2>
-              <button class="btn btn-icon" (click)="closeModal()">✕</button>
-            </div>
-            <form class="modal-body" (ngSubmit)="save()">
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Nome *</label>
-                  <input class="form-control" [(ngModel)]="form.name" name="name" required />
-                </div>
-                <div class="form-group">
-                  <label>Email *</label>
-                  <input class="form-control" type="email" [(ngModel)]="form.email" name="email" required />
-                </div>
-              </div>
-              @if (!editing()) {
-                <div class="form-group">
-                  <label>Senha *</label>
-                  <input class="form-control" type="password" [(ngModel)]="form.password" name="password" required />
-                </div>
-              }
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Cargo *</label>
-                  <input class="form-control" [(ngModel)]="form.position" name="position" required />
-                </div>
-                <div class="form-group">
-                  <label>Departamento</label>
-                  <select class="form-control" [(ngModel)]="form.departmentId" name="departmentId">
-                    <option [ngValue]="null">Selecione...</option>
-                    @for (dept of departments(); track dept.id) {
-                      <option [ngValue]="dept.id">{{ dept.name }}</option>
-                    }
-                  </select>
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Telefone</label>
-                  <input class="form-control" [(ngModel)]="form.phone" name="phone" />
-                </div>
-                <div class="form-group">
-                  <label>Perfil</label>
-                  <select class="form-control" [(ngModel)]="form.role" name="role">
-                    <option value="EMPLOYEE">Funcionário</option>
-                    <option value="MANAGER">Gerente</option>
-                    <option value="HR">RH</option>
-                    <option value="ADMIN">Admin</option>
-                  </select>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">
-                  @if (saving()) { <span class="spinner"></span> }
-                  Salvar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      }
     </div>
+
+    @if (showModal()) {
+      <div class="modal-overlay" (click)="closeModal()">
+        <div class="modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>{{ editing() ? 'Editar' : 'Novo' }} Funcionário</h2>
+            <button class="btn-close" (click)="closeModal()">×</button>
+          </div>
+          <form (ngSubmit)="save()">
+            <div class="form-group">
+              <label>Nome</label>
+              <input type="text" [(ngModel)]="form.name" name="name" required />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" [(ngModel)]="form.email" name="email" required />
+            </div>
+            <div class="form-group">
+              <label>Cargo</label>
+              <input type="text" [(ngModel)]="form.position" name="position" required />
+            </div>
+            <div class="form-group">
+              <label>Departamento</label>
+              <select [(ngModel)]="form.departmentId" name="departmentId" required>
+                <option [ngValue]="null">Selecione...</option>
+                @for (dept of departments(); track dept.id) {
+                  <option [ngValue]="dept.id">{{ dept.name }}</option>
+                }
+              </select>
+            </div>
+            @if (!editing()) {
+              <div class="form-group">
+                <label>Senha</label>
+                <input type="password" [(ngModel)]="form.password" name="password" required />
+              </div>
+            }
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
   `,
   styles: [`
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1.5rem;
-
-      h1 { margin: 0 0 0.25rem; }
-      p { color: var(--gray-500); margin: 0; }
-    }
-
-    .loading-state, .empty-state {
-      padding: 3rem;
-      text-align: center;
-      color: var(--gray-500);
-    }
-
-    .empty-icon { font-size: 3rem; display: block; margin-bottom: 1rem; }
-
-    .avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .actions { display: flex; gap: 0.25rem; }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
-    }
-
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal {
-      background: white;
-      border-radius: var(--radius-lg);
-      width: 100%;
-      max-width: 560px;
-      max-height: 90vh;
-      overflow-y: auto;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--gray-200);
-
-      h2 { margin: 0; font-size: 1.125rem; }
-    }
-
-    .modal-body { padding: 1.5rem; }
-
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--gray-100);
-      margin-top: 1rem;
-    }
+    .page { max-width: 1200px; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .page-header h1 { margin: 0; font-size: 1.5rem; }
+    .page-header p { margin: 0.25rem 0 0; color: #64748b; }
+    .card { background: white; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden; }
+    .table-container { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    th { background: #f8fafc; font-weight: 600; color: #475569; }
+    .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; border: none; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+    .btn-icon { background: transparent; padding: 0.25rem; }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.75rem; }
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-inactive { background: #fee2e2; color: #991b1b; }
+    .loading-state, .empty-state { padding: 3rem; text-align: center; }
+    .spinner { width: 32px; height: 32px; border: 3px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-icon { font-size: 3rem; }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal { background: white; border-radius: 0.75rem; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; }
+    .modal-header h2 { margin: 0; font-size: 1.25rem; }
+    .btn-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; }
+    .modal form { padding: 1.5rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+    .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; }
   `]
 })
 export class EmployeeListComponent implements OnInit {
+  private readonly API_URL = 'http://localhost:8085/api';
+  
   employees = signal<Employee[]>([]);
   departments = signal<Department[]>([]);
   loading = signal(true);
   showModal = signal(false);
   editing = signal(false);
-  saving = signal(false);
   
-  form: Partial<Employee> & { password?: string } = this.getEmptyForm();
+  form: any = { name: '', email: '', position: '', departmentId: null, password: '' };
+  editId: number | null = null;
 
-  constructor(
-    private employeeService: EmployeeService,
-    private departmentService: DepartmentService,
-    public authService: AuthService
-  ) {}
+  constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
-    this.loadData();
+    this.loadEmployees();
+    this.loadDepartments();
   }
 
-  private loadData(): void {
-    this.employeeService.getAll().subscribe({
-      next: (data) => {
-        this.employees.set(data);
-        this.loading.set(false);
-      },
+  loadEmployees(): void {
+    this.http.get<Employee[]>(`${this.API_URL}/employees`).subscribe({
+      next: (data: Employee[]) => { this.employees.set(data); this.loading.set(false); },
       error: () => this.loading.set(false)
     });
+  }
 
-    this.departmentService.getAll().subscribe({
-      next: (data) => this.departments.set(data)
+  loadDepartments(): void {
+    this.http.get<Department[]>(`${this.API_URL}/departments`).subscribe({
+      next: (data: Department[]) => this.departments.set(data)
     });
   }
 
   openModal(): void {
-    this.form = this.getEmptyForm();
+    this.form = { name: '', email: '', position: '', departmentId: null, password: '' };
     this.editing.set(false);
+    this.editId = null;
     this.showModal.set(true);
   }
 
@@ -276,69 +205,30 @@ export class EmployeeListComponent implements OnInit {
   }
 
   edit(emp: Employee): void {
-    this.form = { ...emp };
+    this.form = { name: emp.name, email: emp.email, position: emp.position, departmentId: emp.department?.id };
     this.editing.set(true);
+    this.editId = emp.id;
     this.showModal.set(true);
   }
 
-  save(): void {
-    this.saving.set(true);
-    
-    const obs = this.editing() 
-      ? this.employeeService.update(this.form.id!, this.form)
-      : this.employeeService.create(this.form, this.form.password || '');
-
-    obs.subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.closeModal();
-        this.loadData();
-      },
-      error: () => this.saving.set(false)
-    });
-  }
-
   delete(emp: Employee): void {
-    if (confirm(`Deseja desativar o funcionário ${emp.name}?`)) {
-      this.employeeService.delete(emp.id).subscribe({
-        next: () => this.loadData()
+    if (confirm('Confirma exclusão?')) {
+      this.http.delete(`${this.API_URL}/employees/${emp.id}`).subscribe({
+        next: () => this.loadEmployees()
       });
     }
   }
 
-  getInitials(name: string): string {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  }
-
-  getStatusClass(status: EmployeeStatus): string {
-    const classes: Record<EmployeeStatus, string> = {
-      [EmployeeStatus.ACTIVE]: 'success',
-      [EmployeeStatus.ON_LEAVE]: 'warning',
-      [EmployeeStatus.TERMINATED]: 'danger'
-    };
-    return classes[status] || 'gray';
-  }
-
-  getStatusLabel(status: EmployeeStatus): string {
-    const labels: Record<EmployeeStatus, string> = {
-      [EmployeeStatus.ACTIVE]: 'Ativo',
-      [EmployeeStatus.ON_LEAVE]: 'Afastado',
-      [EmployeeStatus.TERMINATED]: 'Desligado'
-    };
-    return labels[status] || status;
-  }
-
-  private getEmptyForm(): Partial<Employee> & { password?: string } {
-    return {
-      name: '',
-      email: '',
-      position: '',
-      departmentId: undefined,
-      phone: '',
-      role: Role.EMPLOYEE,
-      status: EmployeeStatus.ACTIVE,
-      password: ''
-    };
+  save(): void {
+    const data = { name: this.form.name, email: this.form.email, position: this.form.position, department: { id: this.form.departmentId } };
+    if (this.editing() && this.editId) {
+      this.http.put(`${this.API_URL}/employees/${this.editId}`, data).subscribe({
+        next: () => { this.closeModal(); this.loadEmployees(); }
+      });
+    } else {
+      this.http.post(`${this.API_URL}/employees?password=${this.form.password}`, data).subscribe({
+        next: () => { this.closeModal(); this.loadEmployees(); }
+      });
+    }
   }
 }
-

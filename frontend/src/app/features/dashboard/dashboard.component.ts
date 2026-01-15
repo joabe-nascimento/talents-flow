@@ -1,8 +1,14 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { DashboardService } from '@core/services/dashboard.service';
-import { DashboardData } from '@core/models';
+import { HttpClient } from '@angular/common/http';
+
+interface DashboardData {
+  totalEmployees: number;
+  totalDepartments: number;
+  openPositions: number;
+  totalCandidates: number;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -58,19 +64,19 @@ import { DashboardData } from '@core/models';
         <div class="quick-actions">
           <h2>Ações Rápidas</h2>
           <div class="actions-grid">
-            <a routerLink="/employees" class="action-card">
+            <a routerLink="/dashboard/employees" class="action-card">
               <span class="action-icon">👤</span>
               <span class="action-text">Novo Funcionário</span>
             </a>
-            <a routerLink="/jobs" class="action-card">
+            <a routerLink="/dashboard/jobs" class="action-card">
               <span class="action-icon">📝</span>
               <span class="action-text">Nova Vaga</span>
             </a>
-            <a routerLink="/candidates" class="action-card">
+            <a routerLink="/dashboard/candidates" class="action-card">
               <span class="action-icon">📨</span>
               <span class="action-text">Ver Candidatos</span>
             </a>
-            <a routerLink="/departments" class="action-card">
+            <a routerLink="/dashboard/departments" class="action-card">
               <span class="action-icon">🏗️</span>
               <span class="action-text">Departamentos</span>
             </a>
@@ -98,18 +104,46 @@ import { DashboardData } from '@core/models';
       }
     }
 
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
     .loading-state {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 4rem 2rem;
-      color: var(--gray-500);
+      padding: 4rem;
 
       .spinner {
-        width: 2rem;
-        height: 2rem;
-        margin-bottom: 1rem;
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      p {
+        margin-top: 1rem;
+        color: #64748b;
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
       }
     }
 
@@ -122,87 +156,93 @@ import { DashboardData } from '@core/models';
 
     .stat-card {
       background: white;
-      border-radius: var(--radius-lg);
+      border-radius: 1rem;
       padding: 1.5rem;
       display: flex;
       align-items: center;
       gap: 1rem;
-      box-shadow: var(--shadow);
-      transition: transform 0.2s, box-shadow 0.2s;
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-      }
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .stat-icon {
       width: 56px;
       height: 56px;
-      border-radius: 12px;
+      border-radius: 0.75rem;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 1.5rem;
+    }
 
-      &-blue { background: #dbeafe; }
-      &-purple { background: #e9d5ff; }
-      &-green { background: #d1fae5; }
-      &-orange { background: #fed7aa; }
+    .stat-icon-blue {
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    .stat-icon-purple {
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    .stat-icon-green {
+      background: rgba(34, 197, 94, 0.1);
+    }
+
+    .stat-icon-orange {
+      background: rgba(249, 115, 22, 0.1);
     }
 
     .stat-content {
       display: flex;
       flex-direction: column;
-    }
 
-    .stat-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: var(--gray-900);
-      line-height: 1.2;
-    }
+      .stat-value {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #0f172a;
+      }
 
-    .stat-label {
-      font-size: 0.875rem;
-      color: var(--gray-500);
+      .stat-label {
+        color: #64748b;
+        font-size: 0.875rem;
+      }
     }
 
     .quick-actions {
+      background: white;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
       h2 {
-        font-size: 1.25rem;
-        margin-bottom: 1rem;
+        margin: 0 0 1rem;
+        font-size: 1.125rem;
       }
     }
 
     .actions-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 1rem;
     }
 
     .action-card {
-      background: white;
-      border-radius: var(--radius-lg);
-      padding: 1.5rem;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 0.75rem;
+      padding: 1.5rem;
+      background: #f8fafc;
+      border-radius: 0.75rem;
       text-decoration: none;
-      color: var(--gray-700);
-      box-shadow: var(--shadow);
+      color: #334155;
       transition: all 0.2s;
-      border: 2px solid transparent;
 
       &:hover {
-        border-color: var(--primary);
+        background: #f1f5f9;
         transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
       }
 
       .action-icon {
-        font-size: 2rem;
+        font-size: 1.75rem;
       }
 
       .action-text {
@@ -216,15 +256,15 @@ export class DashboardComponent implements OnInit {
   loading = signal(true);
   data = signal<DashboardData | null>(null);
 
-  constructor(private dashboardService: DashboardService) {}
+  constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
     this.loadDashboard();
   }
 
   private loadDashboard(): void {
-    this.dashboardService.getDashboard().subscribe({
-      next: (data) => {
+    this.http.get<DashboardData>('http://localhost:8085/api/dashboard').subscribe({
+      next: (data: DashboardData) => {
         this.data.set(data);
         this.loading.set(false);
       },
@@ -234,4 +274,3 @@ export class DashboardComponent implements OnInit {
     });
   }
 }
-

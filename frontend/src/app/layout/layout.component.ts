@@ -1,8 +1,16 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { AuthService } from '@core/services/auth.service';
-import { User } from '@core/models';
+import { RouterModule, Router } from '@angular/router';
+
+const TOKEN_KEY = 'talentflow_token';
+const USER_KEY = 'talentflow_user';
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
 
 @Component({
   selector: 'app-layout',
@@ -19,23 +27,23 @@ import { User } from '@core/models';
         </div>
         
         <nav class="sidebar-nav">
-          <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
             <span class="nav-icon">📊</span>
             <span>Dashboard</span>
           </a>
-          <a routerLink="/employees" routerLinkActive="active" class="nav-item">
+          <a routerLink="/dashboard/employees" routerLinkActive="active" class="nav-item">
             <span class="nav-icon">👥</span>
             <span>Funcionários</span>
           </a>
-          <a routerLink="/departments" routerLinkActive="active" class="nav-item">
+          <a routerLink="/dashboard/departments" routerLinkActive="active" class="nav-item">
             <span class="nav-icon">🏢</span>
             <span>Departamentos</span>
           </a>
-          <a routerLink="/jobs" routerLinkActive="active" class="nav-item">
+          <a routerLink="/dashboard/jobs" routerLinkActive="active" class="nav-item">
             <span class="nav-icon">💼</span>
             <span>Vagas</span>
           </a>
-          <a routerLink="/candidates" routerLinkActive="active" class="nav-item">
+          <a routerLink="/dashboard/candidates" routerLinkActive="active" class="nav-item">
             <span class="nav-icon">📋</span>
             <span>Candidatos</span>
           </a>
@@ -103,7 +111,6 @@ import { User } from '@core/models';
     .sidebar-nav {
       flex: 1;
       padding: 1rem 0;
-      overflow-y: auto;
     }
 
     .nav-item {
@@ -114,7 +121,6 @@ import { User } from '@core/models';
       color: #94a3b8;
       text-decoration: none;
       transition: all 0.2s;
-      border-left: 3px solid transparent;
 
       &:hover {
         background: rgba(255, 255, 255, 0.05);
@@ -122,14 +128,14 @@ import { User } from '@core/models';
       }
 
       &.active {
-        background: rgba(59, 130, 246, 0.1);
+        background: rgba(59, 130, 246, 0.2);
         color: #3b82f6;
-        border-left-color: #3b82f6;
+        border-right: 3px solid #3b82f6;
       }
-    }
 
-    .nav-icon {
-      font-size: 1.125rem;
+      .nav-icon {
+        font-size: 1.125rem;
+      }
     }
 
     .sidebar-footer {
@@ -147,38 +153,39 @@ import { User } from '@core/models';
     }
 
     .user-avatar {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.875rem;
       font-weight: 600;
+      font-size: 0.875rem;
     }
 
     .user-details {
       display: flex;
       flex-direction: column;
-    }
 
-    .user-name {
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
+      .user-name {
+        font-weight: 500;
+        font-size: 0.875rem;
+      }
 
-    .user-role {
-      font-size: 0.75rem;
-      color: #64748b;
+      .user-role {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: capitalize;
+      }
     }
 
     .btn-logout {
-      background: transparent;
+      background: rgba(255, 255, 255, 0.1);
       border: none;
-      cursor: pointer;
       padding: 0.5rem;
-      border-radius: 8px;
+      border-radius: 0.5rem;
+      cursor: pointer;
       transition: background 0.2s;
 
       &:hover {
@@ -201,21 +208,31 @@ import { User } from '@core/models';
 export class LayoutComponent implements OnInit {
   currentUser: User | null = null;
 
-  constructor(private authService: AuthService) {}
+  constructor(private router: Router) {}
 
   ngOnInit(): void {
-    this.authService.currentUser$.subscribe(user => {
-      this.currentUser = user;
-    });
+    this.loadUser();
+  }
+
+  private loadUser(): void {
+    try {
+      const userStr = localStorage.getItem(USER_KEY);
+      if (userStr) {
+        this.currentUser = JSON.parse(userStr);
+      }
+    } catch {
+      this.currentUser = null;
+    }
   }
 
   getUserInitials(): string {
     const name = this.currentUser?.name || '';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    return name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
   logout(): void {
-    this.authService.logout();
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+    this.router.navigate(['/login']);
   }
 }
-

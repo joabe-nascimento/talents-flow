@@ -1,52 +1,56 @@
+import { CanActivateFn, Router } from '@angular/router';
 import { inject } from '@angular/core';
-import { Router, CanActivateFn } from '@angular/router';
-import { AuthService } from '@core/services/auth.service';
 
-export const authGuard: CanActivateFn = () => {
-  const authService = inject(AuthService);
+const TOKEN_KEY = 'talentflow_token';
+const USER_KEY = 'talentflow_user';
+
+function getStoredUser() {
+  const userStr = localStorage.getItem(USER_KEY);
+  return userStr ? JSON.parse(userStr) : null;
+}
+
+function isLoggedIn(): boolean {
+  return !!localStorage.getItem(TOKEN_KEY);
+}
+
+export const authGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
-
-  if (authService.isAuthenticated()) {
+  
+  if (isLoggedIn()) {
     return true;
   }
-
-  router.navigate(['/login']);
-  return false;
+  
+  return router.createUrlTree(['/login']);
 };
 
-export const guestGuard: CanActivateFn = () => {
-  const authService = inject(AuthService);
+export const guestGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
-
-  if (!authService.isAuthenticated()) {
+  
+  if (!isLoggedIn()) {
     return true;
   }
-
-  router.navigate(['/dashboard']);
-  return false;
+  
+  return router.createUrlTree(['/dashboard']);
 };
 
-export const adminGuard: CanActivateFn = () => {
-  const authService = inject(AuthService);
+export const adminGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
-
-  if (authService.isAdmin()) {
+  const user = getStoredUser();
+  
+  if (user?.role === 'ADMIN') {
     return true;
   }
-
-  router.navigate(['/dashboard']);
-  return false;
+  
+  return router.createUrlTree(['/dashboard']);
 };
 
-export const hrGuard: CanActivateFn = () => {
-  const authService = inject(AuthService);
+export const hrGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
-
-  if (authService.isHR()) {
+  const user = getStoredUser();
+  
+  if (user?.role === 'ADMIN' || user?.role === 'HR') {
     return true;
   }
-
-  router.navigate(['/dashboard']);
-  return false;
+  
+  return router.createUrlTree(['/dashboard']);
 };
-

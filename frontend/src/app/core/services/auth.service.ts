@@ -1,7 +1,7 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, BehaviorSubject } from 'rxjs';
 import { environment } from '@environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User, Role } from '@core/models';
 
@@ -13,25 +13,30 @@ export class AuthService {
   private readonly TOKEN_KEY = 'talentflow_token';
   private readonly USER_KEY = 'talentflow_user';
 
-  private currentUserSignal = signal<User | null>(null);
+  private currentUserSubject = new BehaviorSubject<User | null>(this.getStoredUser());
   
-  currentUser = computed(() => this.currentUserSignal());
-  isAuthenticated = computed(() => !!this.currentUserSignal());
-  isAdmin = computed(() => this.currentUserSignal()?.role === Role.ADMIN);
-  isHR = computed(() => {
-    const role = this.currentUserSignal()?.role;
-    return role === Role.HR || role === Role.ADMIN;
-  });
+  currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(
     private http: HttpClient,
     private router: Router
-  ) {
-    // Inicializar com usuário do localStorage após construção
-    const storedUser = this.getStoredUser();
-    if (storedUser) {
-      this.currentUserSignal.set(storedUser);
-    }
+  ) {}
+
+  currentUser(): User | null {
+    return this.currentUserSubject.value;
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.currentUserSubject.value;
+  }
+
+  isAdmin(): boolean {
+    return this.currentUserSubject.value?.role === Role.ADMIN;
+  }
+
+  isHR(): boolean {
+    const role = this.currentUserSubject.value?.role;
+    return role === Role.HR || role === Role.ADMIN;
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
@@ -49,7 +54,7 @@ export class AuthService {
   logout(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
-    this.currentUserSignal.set(null);
+    this.currentUserSubject.next(null);
     this.router.navigate(['/login']);
   }
 
@@ -66,12 +71,15 @@ export class AuthService {
       role: response.role
     };
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
-    this.currentUserSignal.set(user);
+    this.currentUserSubject.next(user);
   }
 
   private getStoredUser(): User | null {
-    const userStr = localStorage.getItem(this.USER_KEY);
-    return userStr ? JSON.parse(userStr) : null;
+    try {
+      const userStr = localStorage.getItem(this.USER_KEY);
+      return userStr ? JSON.parse(userStr) : null;
+    } catch {
+      return null;
+    }
   }
 }
-

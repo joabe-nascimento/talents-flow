@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { User } from '@core/models';
 
 @Component({
   selector: 'app-layout',
@@ -44,8 +45,8 @@ import { AuthService } from '@core/services/auth.service';
           <div class="user-info">
             <div class="user-avatar">{{ getUserInitials() }}</div>
             <div class="user-details">
-              <span class="user-name">{{ authService.currentUser()?.name }}</span>
-              <span class="user-role">{{ authService.currentUser()?.role }}</span>
+              <span class="user-name">{{ currentUser?.name }}</span>
+              <span class="user-role">{{ currentUser?.role }}</span>
             </div>
           </div>
           <button class="btn-logout" (click)="logout()">
@@ -197,11 +198,19 @@ import { AuthService } from '@core/services/auth.service';
     }
   `]
 })
-export class LayoutComponent {
-  constructor(public authService: AuthService) {}
+export class LayoutComponent implements OnInit {
+  currentUser: User | null = null;
+
+  constructor(private authService: AuthService) {}
+
+  ngOnInit(): void {
+    this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+    });
+  }
 
   getUserInitials(): string {
-    const name = this.authService.currentUser()?.name || '';
+    const name = this.currentUser?.name || '';
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 

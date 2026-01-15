@@ -1,29 +1,22 @@
-import { HttpInterceptorFn, HttpErrorResponse, HttpHandlerFn, HttpRequest } from '@angular/common/http';
-import { inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { catchError, throwError } from 'rxjs';
 
 const TOKEN_KEY = 'talentflow_token';
+const USER_KEY = 'talentflow_user';
 
-export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
-  const router = inject(Router);
+export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem(TOKEN_KEY);
 
-  let authReq = req;
-  if (token) {
-    authReq = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-  }
+  const authReq = token 
+    ? req.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
+    : req;
 
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401) {
         localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem('talentflow_user');
-        router.navigate(['/login']);
+        localStorage.removeItem(USER_KEY);
+        window.location.href = '/login';
       }
       return throwError(() => error);
     })

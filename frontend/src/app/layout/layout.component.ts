@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 
 const TOKEN_KEY = 'talentflow_token';
 const USER_KEY = 'talentflow_user';
+const SIDEBAR_KEY = 'talentflow_sidebar';
 
 interface User {
   id: number;
@@ -17,7 +18,7 @@ interface User {
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="app">
+    <div class="app" [class.collapsed]="collapsed()">
       <aside class="sidebar">
         <!-- Brand -->
         <div class="brand">
@@ -105,6 +106,17 @@ interface User {
           </a>
         </nav>
 
+        <!-- Toggle Button -->
+        <button class="btn-toggle" (click)="toggleSidebar()" [title]="collapsed() ? 'Expandir menu' : 'Recolher menu'">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            @if (collapsed()) {
+              <polyline points="9,18 15,12 9,6"/>
+            } @else {
+              <polyline points="15,18 9,12 15,6"/>
+            }
+          </svg>
+        </button>
+
         <!-- User -->
         <div class="user">
           <div class="user-avatar">{{ getUserInitials() }}</div>
@@ -144,7 +156,19 @@ interface User {
       position: fixed;
       height: 100vh;
       z-index: 100;
+      transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    /* Collapsed State */
+    .app.collapsed .sidebar { width: 64px; }
+    .app.collapsed .brand-name { opacity: 0; width: 0; }
+    .app.collapsed .nav-item span { opacity: 0; width: 0; position: absolute; }
+    .app.collapsed .user-info { opacity: 0; width: 0; position: absolute; }
+    .app.collapsed .brand { justify-content: center; padding: 16px; }
+    .app.collapsed .nav-item { justify-content: center; padding: 12px; }
+    .app.collapsed .user { justify-content: center; gap: 0; }
+    .app.collapsed .btn-logout { position: absolute; opacity: 0; }
+    .app.collapsed .content { margin-left: 64px; }
 
     /* Brand */
     .brand {
@@ -153,6 +177,7 @@ interface User {
       gap: 10px;
       padding: 20px 16px;
       border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.25s ease;
     }
 
     .brand-icon {
@@ -164,6 +189,7 @@ interface User {
       align-items: center;
       justify-content: center;
       color: white;
+      flex-shrink: 0;
     }
 
     .brand-name {
@@ -171,6 +197,9 @@ interface User {
       font-weight: 600;
       color: #fff;
       letter-spacing: -0.3px;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: opacity 0.2s ease, width 0.25s ease;
     }
 
     /* Navigation */
@@ -201,12 +230,18 @@ interface User {
       font-weight: 500;
       transition: all 0.15s ease;
       position: relative;
+      overflow: hidden;
     }
 
     .nav-item svg {
       width: 18px;
       height: 18px;
       flex-shrink: 0;
+    }
+
+    .nav-item span {
+      white-space: nowrap;
+      transition: opacity 0.2s ease, width 0.25s ease;
     }
 
     .nav-item:hover {
@@ -231,6 +266,35 @@ interface User {
       border-radius: 0 2px 2px 0;
     }
 
+    /* Toggle Button */
+    .btn-toggle {
+      width: calc(100% - 16px);
+      margin: 0 8px 8px;
+      padding: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #71717a;
+      transition: all 0.15s ease;
+    }
+
+    .btn-toggle:hover {
+      background: rgba(255,255,255,0.08);
+      color: #e4e4e7;
+    }
+
+    .btn-toggle svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.25s ease;
+    }
+
+    .app.collapsed .btn-toggle { width: 48px; margin: 0 8px 8px; }
+
     /* User */
     .user {
       display: flex;
@@ -238,6 +302,8 @@ interface User {
       gap: 10px;
       padding: 12px 16px;
       border-top: 1px solid rgba(255,255,255,0.06);
+      position: relative;
+      transition: all 0.25s ease;
     }
 
     .user-avatar {
@@ -251,11 +317,14 @@ interface User {
       font-size: 11px;
       font-weight: 600;
       color: white;
+      flex-shrink: 0;
     }
 
     .user-info {
       flex: 1;
       min-width: 0;
+      overflow: hidden;
+      transition: opacity 0.2s ease, width 0.25s ease;
     }
 
     .user-name {
@@ -287,6 +356,7 @@ interface User {
       justify-content: center;
       color: #52525b;
       transition: all 0.15s ease;
+      flex-shrink: 0;
     }
 
     .btn-logout:hover {
@@ -305,27 +375,29 @@ interface User {
       margin-left: 220px;
       padding: 24px;
       min-height: 100vh;
+      transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     @media (max-width: 768px) {
       .sidebar { width: 64px; }
-      .sidebar .brand-name,
-      .sidebar .nav-item span,
-      .sidebar .user-info { display: none; }
-      .sidebar .brand { justify-content: center; padding: 16px; }
-      .sidebar .nav-item { justify-content: center; padding: 12px; }
-      .sidebar .user { justify-content: center; }
+      .brand-name, .nav-item span, .user-info { display: none; }
+      .brand { justify-content: center; padding: 16px; }
+      .nav-item { justify-content: center; padding: 12px; }
+      .user { justify-content: center; }
       .content { margin-left: 64px; }
+      .btn-toggle { display: none; }
     }
   `]
 })
 export class LayoutComponent implements OnInit {
   currentUser: User | null = null;
+  collapsed = signal(false);
 
   constructor(private router: Router) {}
 
   ngOnInit(): void {
     this.loadUser();
+    this.loadSidebarState();
   }
 
   private loadUser(): void {
@@ -337,6 +409,19 @@ export class LayoutComponent implements OnInit {
     } catch {
       this.currentUser = null;
     }
+  }
+
+  private loadSidebarState(): void {
+    const saved = localStorage.getItem(SIDEBAR_KEY);
+    if (saved === 'collapsed') {
+      this.collapsed.set(true);
+    }
+  }
+
+  toggleSidebar(): void {
+    const newState = !this.collapsed();
+    this.collapsed.set(newState);
+    localStorage.setItem(SIDEBAR_KEY, newState ? 'collapsed' : 'expanded');
   }
 
   getUserInitials(): string {

@@ -168,7 +168,6 @@ interface User {
     .app.collapsed .nav-item { justify-content: center; padding: 12px; }
     .app.collapsed .user { justify-content: center; gap: 0; }
     .app.collapsed .btn-logout { position: absolute; opacity: 0; }
-    .app.collapsed .content { margin-left: 64px; }
 
     /* Brand */
     .brand {
@@ -375,7 +374,30 @@ interface User {
       margin-left: 220px;
       padding: 24px;
       min-height: 100vh;
-      transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      width: calc(100% - 220px);
+      transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .app.collapsed .content {
+      margin-left: 64px;
+      width: calc(100% - 64px);
+    }
+
+    /* Global Content Styles */
+    .content ::ng-deep .page {
+      width: 100%;
+      transition: width 0.25s ease;
+    }
+
+    .content ::ng-deep .pipeline {
+      width: 100%;
+    }
+
+    .content ::ng-deep .grid,
+    .content ::ng-deep .stats,
+    .content ::ng-deep .kpis,
+    .content ::ng-deep .reports-grid {
+      width: 100%;
     }
 
     @media (max-width: 768px) {

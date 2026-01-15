@@ -55,6 +55,10 @@ interface User {
             <span class="nav-icon">📊</span>
             <span>Relatórios</span>
           </a>
+          <a routerLink="/dashboard/vacations" routerLinkActive="active" class="nav-item">
+            <span class="nav-icon">🏖️</span>
+            <span>Férias</span>
+          </a>
         </nav>
 
         <div class="sidebar-footer">

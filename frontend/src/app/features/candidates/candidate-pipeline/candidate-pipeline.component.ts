@@ -2,15 +2,17 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 
 interface Candidate {
   id: number;
   name: string;
   email: string;
   phone: string;
-  jobPosition: { id: number; title: string } | null;
+  jobPositionId: number | null;
+  jobPositionTitle: string | null;
   status: string;
-  appliedAt: string;
+  applicationDate: string;
 }
 
 interface PipelineColumn {
@@ -23,21 +25,21 @@ interface PipelineColumn {
 @Component({
   selector: 'app-candidate-pipeline',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, PageHeaderComponent],
   template: `
     <div class="page">
-      <header class="header">
-        <div>
-          <h1>Pipeline</h1>
-          <p>Arraste candidatos entre etapas</p>
-        </div>
+      <app-page-header 
+        title="Pipeline" 
+        subtitle="Arraste candidatos entre etapas"
+        backLink="/dashboard/recruitment"
+        backLabel="Recrutamento">
         <a routerLink="/dashboard/candidates" class="btn-secondary">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M4 6h16M4 12h16M4 18h16"/>
           </svg>
           Lista
         </a>
-      </header>
+      </app-page-header>
 
       @if (loading()) {
         <div class="loading"><div class="spinner"></div></div>
@@ -59,12 +61,12 @@ interface PipelineColumn {
                       <div class="avatar">{{ getInitials(c.name) }}</div>
                       <div class="info">
                         <span class="name">{{ c.name }}</span>
-                        <span class="job">{{ c.jobPosition?.title || 'Sem vaga' }}</span>
+                        <span class="job">{{ c.jobPositionTitle || 'Sem vaga' }}</span>
                       </div>
                     </div>
                     <div class="card-footer">
                       <span class="email">{{ c.email }}</span>
-                      <span class="date">{{ formatDate(c.appliedAt) }}</span>
+                      <span class="date">{{ formatDate(c.applicationDate) }}</span>
                     </div>
                   </div>
                 } @empty {
@@ -244,9 +246,9 @@ export class CandidatePipelineComponent implements OnInit {
   private draggedCandidate: Candidate | null = null;
   
   private readonly statusConfig = [
-    { status: 'NEW', title: 'Novos', color: '#3b82f6' },
+    { status: 'APPLIED', title: 'Novos', color: '#3b82f6' },
     { status: 'SCREENING', title: 'Triagem', color: '#f59e0b' },
-    { status: 'INTERVIEW', title: 'Entrevista', color: '#7c3aed' },
+    { status: 'INTERVIEW_SCHEDULED', title: 'Entrevista', color: '#7c3aed' },
     { status: 'HIRED', title: 'Contratados', color: '#22c55e' },
     { status: 'REJECTED', title: 'Rejeitados', color: '#ef4444' }
   ];
@@ -320,10 +322,7 @@ export class CandidatePipelineComponent implements OnInit {
     });
     this.columns.set(cols);
 
-    this.http.put(`${this.API_URL}/candidates/${candidate.id}`, {
-      ...candidate,
-      status: newStatus,
-      jobPosition: candidate.jobPosition ? { id: candidate.jobPosition.id } : null
-    }).subscribe({ error: () => this.loadCandidates() });
+    this.http.patch(`${this.API_URL}/candidates/${candidate.id}/status?status=${newStatus}`, {})
+      .subscribe({ error: () => this.loadCandidates() });
   }
 }

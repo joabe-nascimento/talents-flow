@@ -1,16 +1,21 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ToastService } from '../../../core/services/toast.service';
+import { environment } from '../../../../environments/environment';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 
 interface Employee {
   id: number;
   name: string;
   email: string;
   position: string;
-  department: { id: number; name: string } | null;
+  departmentId: number | null;
+  departmentName: string | null;
   status: string;
   hireDate: string;
+  phone: string;
 }
 
 interface Department {
@@ -21,14 +26,21 @@ interface Department {
 @Component({
   selector: 'app-employee-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageHeaderComponent],
   template: `
     <div class="page">
-      <header class="header">
-        <div>
-          <h1>Funcionários</h1>
-          <p>{{ employees().length }} registros</p>
-        </div>
+      <app-page-header 
+        title="Funcionários" 
+        [subtitle]="filteredEmployees().length + ' registros'"
+        backLink="/dashboard/people"
+        backLabel="Pessoas">
+        <button class="btn-export" (click)="exportPdf()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          PDF
+        </button>
         <button class="btn-primary" (click)="openModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -36,19 +48,55 @@ interface Department {
           </svg>
           Adicionar
         </button>
-      </header>
+      </app-page-header>
+
+      <!-- Filters -->
+      <div class="filters">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <input 
+            type="text" 
+            placeholder="Buscar por nome ou email..." 
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange()"
+          />
+          @if (searchTerm) {
+            <button class="clear-search" (click)="clearSearch()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          }
+        </div>
+        <select [(ngModel)]="filterDepartment" (ngModelChange)="onFilterChange()">
+          <option [ngValue]="null">Todos os departamentos</option>
+          @for (dept of departments(); track dept.id) {
+            <option [ngValue]="dept.id">{{ dept.name }}</option>
+          }
+        </select>
+        <select [(ngModel)]="filterStatus" (ngModelChange)="onFilterChange()">
+          <option [ngValue]="null">Todos os status</option>
+          <option value="ACTIVE">Ativo</option>
+          <option value="ON_LEAVE">Afastado</option>
+          <option value="TERMINATED">Desligado</option>
+        </select>
+      </div>
 
       @if (loading()) {
         <div class="loading"><div class="spinner"></div></div>
       } @else {
         <div class="card">
-          @if (employees().length === 0) {
+          @if (filteredEmployees().length === 0) {
             <div class="empty">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                 <circle cx="9" cy="7" r="4"/>
               </svg>
-              <span>Nenhum funcionário cadastrado</span>
+              <span>{{ searchTerm || filterDepartment || filterStatus ? 'Nenhum resultado encontrado' : 'Nenhum funcionário cadastrado' }}</span>
             </div>
           } @else {
             <table>
@@ -62,7 +110,7 @@ interface Department {
                 </tr>
               </thead>
               <tbody>
-                @for (emp of employees(); track emp.id) {
+                @for (emp of filteredEmployees(); track emp.id) {
                   <tr>
                     <td>
                       <div class="user-cell">
@@ -74,10 +122,10 @@ interface Department {
                       </div>
                     </td>
                     <td>{{ emp.position }}</td>
-                    <td>{{ emp.department?.name || '-' }}</td>
+                    <td>{{ emp.departmentName || '-' }}</td>
                     <td>
                       <span class="badge" [class]="emp.status.toLowerCase()">
-                        {{ emp.status === 'ACTIVE' ? 'Ativo' : 'Inativo' }}
+                        {{ getStatusLabel(emp.status) }}
                       </span>
                     </td>
                     <td>
@@ -149,7 +197,9 @@ interface Department {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn-secondary" (click)="closeModal()">Cancelar</button>
-              <button type="submit" class="btn-primary">Salvar</button>
+              <button type="submit" class="btn-primary" [disabled]="saving()">
+                {{ saving() ? 'Salvando...' : 'Salvar' }}
+              </button>
             </div>
           </form>
         </div>
@@ -166,8 +216,28 @@ interface Department {
       margin-bottom: 20px;
     }
 
-    .header h1 { font-size: 20px; font-weight: 600; color: #18181b; margin: 0; }
-    .header p { font-size: 13px; color: #71717a; margin: 4px 0 0; }
+    .header h1 { font-size: 20px; font-weight: 600; color: var(--text-primary, #18181b); margin: 0; }
+    .header p { font-size: 13px; color: var(--text-secondary, #71717a); margin: 4px 0 0; }
+
+    .header-actions { display: flex; gap: 10px; }
+
+    .btn-export {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      background: var(--bg-secondary, #fff);
+      color: var(--text-primary, #3f3f46);
+      border: 1px solid var(--border-color, #e4e4e7);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-export:hover { background: var(--border-color, #f4f4f5); }
+    .btn-export svg { width: 16px; height: 16px; }
 
     .btn-primary {
       display: inline-flex;
@@ -188,6 +258,7 @@ interface Department {
     }
 
     .btn-primary:hover { background: #6d28d9; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary svg { width: 18px; height: 18px; }
 
     .btn-secondary {
@@ -198,8 +269,8 @@ interface Department {
       min-width: 120px;
       height: 40px;
       padding: 0 20px;
-      background: #f4f4f5;
-      color: #3f3f46;
+      background: var(--border-color, #f4f4f5);
+      color: var(--text-primary, #3f3f46);
       border: none;
       border-radius: 8px;
       font-size: 14px;
@@ -207,19 +278,87 @@ interface Department {
       cursor: pointer;
       white-space: nowrap;
     }
-    .btn-secondary:hover { background: #e4e4e7; }
-    .btn-secondary svg { width: 18px; height: 18px; }
+    .btn-secondary:hover { background: var(--text-muted, #e4e4e7); }
 
-    .btn-secondary:hover { background: #e4e4e7; }
+    /* Filters */
+    .filters {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .search-box {
+      flex: 1;
+      max-width: 300px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-box svg {
+      position: absolute;
+      left: 12px;
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted, #a1a1aa);
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 36px 10px 36px;
+      border: 1px solid var(--border-color, #e4e4e7);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--bg-secondary, #fff);
+      color: var(--text-primary, #18181b);
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
+
+    .clear-search {
+      position: absolute;
+      right: 8px;
+      width: 20px;
+      height: 20px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted, #a1a1aa);
+      padding: 0;
+    }
+
+    .clear-search:hover { color: var(--text-primary, #18181b); }
+    .clear-search svg { width: 14px; height: 14px; }
+
+    .filters select {
+      padding: 10px 12px;
+      border: 1px solid var(--border-color, #e4e4e7);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--bg-secondary, #fff);
+      color: var(--text-primary, #18181b);
+      min-width: 180px;
+    }
+
+    .filters select:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
 
     .loading { display: flex; justify-content: center; padding: 60px 0; }
-    .spinner { width: 28px; height: 28px; border: 2px solid #e4e4e7; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    .spinner { width: 28px; height: 28px; border: 2px solid var(--border-color, #e4e4e7); border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .card {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
-      border: 1px solid #f4f4f5;
+      border: 1px solid var(--border-color, #f4f4f5);
       overflow: hidden;
     }
 
@@ -229,17 +368,17 @@ interface Department {
       align-items: center;
       gap: 12px;
       padding: 60px 20px;
-      color: #a1a1aa;
+      color: var(--text-muted, #a1a1aa);
     }
 
     .empty svg { width: 40px; height: 40px; }
 
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 12px 16px; text-align: left; }
-    th { font-size: 11px; font-weight: 600; color: #71717a; text-transform: uppercase; letter-spacing: 0.5px; background: #fafafa; border-bottom: 1px solid #f4f4f5; }
-    td { font-size: 13px; color: #3f3f46; border-bottom: 1px solid #f4f4f5; }
+    th { font-size: 11px; font-weight: 600; color: var(--text-secondary, #71717a); text-transform: uppercase; letter-spacing: 0.5px; background: var(--border-color, #fafafa); border-bottom: 1px solid var(--border-color, #f4f4f5); }
+    td { font-size: 13px; color: var(--text-primary, #3f3f46); border-bottom: 1px solid var(--border-color, #f4f4f5); }
     tr:last-child td { border-bottom: none; }
-    tr:hover { background: #fafafa; }
+    tr:hover { background: var(--border-color, #fafafa); }
 
     .user-cell { display: flex; align-items: center; gap: 10px; }
 
@@ -256,8 +395,8 @@ interface Department {
       color: white;
     }
 
-    .name { display: block; font-weight: 500; color: #18181b; }
-    .email { display: block; font-size: 12px; color: #71717a; }
+    .name { display: block; font-weight: 500; color: var(--text-primary, #18181b); }
+    .email { display: block; font-size: 12px; color: var(--text-secondary, #71717a); }
 
     .badge {
       display: inline-block;
@@ -268,7 +407,8 @@ interface Department {
     }
 
     .badge.active { background: #dcfce7; color: #16a34a; }
-    .badge.inactive { background: #fee2e2; color: #dc2626; }
+    .badge.on_leave { background: #fef3c7; color: #92400e; }
+    .badge.terminated { background: #fee2e2; color: #dc2626; }
 
     .actions { display: flex; gap: 4px; }
 
@@ -282,11 +422,11 @@ interface Department {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
       transition: all 0.15s;
     }
 
-    .btn-icon:hover { background: #f4f4f5; color: #18181b; }
+    .btn-icon:hover { background: var(--border-color, #f4f4f5); color: var(--text-primary, #18181b); }
     .btn-icon.danger:hover { background: #fee2e2; color: #dc2626; }
     .btn-icon svg { width: 15px; height: 15px; }
 
@@ -303,7 +443,7 @@ interface Department {
     }
 
     .modal {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
       width: 100%;
       max-width: 420px;
@@ -315,10 +455,10 @@ interface Department {
       justify-content: space-between;
       align-items: center;
       padding: 16px 20px;
-      border-bottom: 1px solid #f4f4f5;
+      border-bottom: 1px solid var(--border-color, #f4f4f5);
     }
 
-    .modal-header h2 { font-size: 15px; font-weight: 600; margin: 0; }
+    .modal-header h2 { font-size: 15px; font-weight: 600; margin: 0; color: var(--text-primary, #18181b); }
 
     .btn-close {
       width: 28px;
@@ -330,25 +470,26 @@ interface Department {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
     }
 
-    .btn-close:hover { background: #f4f4f5; }
+    .btn-close:hover { background: var(--border-color, #f4f4f5); }
     .btn-close svg { width: 16px; height: 16px; }
 
     .modal-body { padding: 20px; }
 
     .field { margin-bottom: 14px; }
     .field:last-child { margin-bottom: 0; }
-    .field label { display: block; font-size: 12px; font-weight: 500; color: #3f3f46; margin-bottom: 6px; }
+    .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-primary, #3f3f46); margin-bottom: 6px; }
 
     .field input, .field select {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #e4e4e7;
+      border: 1px solid var(--border-color, #e4e4e7);
       border-radius: 8px;
       font-size: 13px;
-      transition: border-color 0.15s;
+      background: var(--bg-secondary, #fff);
+      color: var(--text-primary, #18181b);
     }
 
     .field input:focus, .field select:focus {
@@ -361,23 +502,55 @@ interface Department {
       justify-content: flex-end;
       gap: 8px;
       padding: 16px 20px;
-      border-top: 1px solid #f4f4f5;
+      border-top: 1px solid var(--border-color, #f4f4f5);
+    }
+
+    @media (max-width: 768px) {
+      .filters { flex-wrap: wrap; }
+      .search-box { max-width: 100%; order: -1; width: 100%; }
     }
   `]
 })
 export class EmployeeListComponent implements OnInit {
-  private readonly API_URL = 'http://localhost:8085/api';
+  private readonly API_URL = environment.apiUrl;
+  private http = inject(HttpClient);
+  private toast = inject(ToastService);
   
   employees = signal<Employee[]>([]);
   departments = signal<Department[]>([]);
   loading = signal(true);
+  saving = signal(false);
   showModal = signal(false);
   editing = signal(false);
+  
+  searchTerm = '';
+  filterDepartment: number | null = null;
+  filterStatus: string | null = null;
   
   form: any = { name: '', email: '', position: '', departmentId: null, password: '' };
   editId: number | null = null;
 
-  constructor(private http: HttpClient) {}
+  filteredEmployees = computed(() => {
+    let result = this.employees();
+    
+    if (this.searchTerm) {
+      const term = this.searchTerm.toLowerCase();
+      result = result.filter(e => 
+        e.name.toLowerCase().includes(term) || 
+        e.email.toLowerCase().includes(term)
+      );
+    }
+    
+    if (this.filterDepartment) {
+      result = result.filter(e => e.departmentId === this.filterDepartment);
+    }
+    
+    if (this.filterStatus) {
+      result = result.filter(e => e.status === this.filterStatus);
+    }
+    
+    return result;
+  });
 
   ngOnInit(): void {
     this.loadEmployees();
@@ -397,8 +570,29 @@ export class EmployeeListComponent implements OnInit {
     });
   }
 
+  onSearchChange(): void {
+    // Trigger computed signal update
+  }
+
+  onFilterChange(): void {
+    // Trigger computed signal update
+  }
+
+  clearSearch(): void {
+    this.searchTerm = '';
+  }
+
   getInitials(name: string): string {
     return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'ACTIVE': 'Ativo',
+      'ON_LEAVE': 'Afastado',
+      'TERMINATED': 'Desligado'
+    };
+    return labels[status] || status;
   }
 
   openModal(): void {
@@ -411,7 +605,7 @@ export class EmployeeListComponent implements OnInit {
   closeModal(): void { this.showModal.set(false); }
 
   edit(emp: Employee): void {
-    this.form = { name: emp.name, email: emp.email, position: emp.position, departmentId: emp.department?.id };
+    this.form = { name: emp.name, email: emp.email, position: emp.position, departmentId: emp.departmentId };
     this.editing.set(true);
     this.editId = emp.id;
     this.showModal.set(true);
@@ -419,16 +613,72 @@ export class EmployeeListComponent implements OnInit {
 
   delete(emp: Employee): void {
     if (confirm('Confirma exclusão?')) {
-      this.http.delete(`${this.API_URL}/employees/${emp.id}`).subscribe({ next: () => this.loadEmployees() });
+      this.http.delete(`${this.API_URL}/employees/${emp.id}`).subscribe({
+        next: () => {
+          this.toast.success('Funcionário desativado com sucesso');
+          this.loadEmployees();
+        },
+        error: (err) => this.toast.error(err.error?.message || 'Erro ao desativar funcionário')
+      });
     }
   }
 
   save(): void {
-    const data = { name: this.form.name, email: this.form.email, position: this.form.position, department: { id: this.form.departmentId } };
-    if (this.editing() && this.editId) {
-      this.http.put(`${this.API_URL}/employees/${this.editId}`, data).subscribe({ next: () => { this.closeModal(); this.loadEmployees(); } });
-    } else {
-      this.http.post(`${this.API_URL}/employees?password=${this.form.password}`, data).subscribe({ next: () => { this.closeModal(); this.loadEmployees(); } });
+    if (!this.form.name || !this.form.email || !this.form.position) {
+      this.toast.warning('Preencha todos os campos obrigatórios');
+      return;
     }
+
+    this.saving.set(true);
+    
+    const data: any = { 
+      name: this.form.name, 
+      email: this.form.email, 
+      position: this.form.position, 
+      departmentId: this.form.departmentId 
+    };
+    
+    if (this.editing() && this.editId) {
+      this.http.put(`${this.API_URL}/employees/${this.editId}`, data).subscribe({
+        next: () => { 
+          this.toast.success('Funcionário atualizado com sucesso');
+          this.closeModal(); 
+          this.loadEmployees();
+          this.saving.set(false);
+        },
+        error: (err) => {
+          this.toast.error(err.error?.message || 'Erro ao atualizar funcionário');
+          this.saving.set(false);
+        }
+      });
+    } else {
+      this.http.post(`${this.API_URL}/employees?password=${this.form.password}`, data).subscribe({
+        next: () => { 
+          this.toast.success('Funcionário criado com sucesso');
+          this.closeModal(); 
+          this.loadEmployees();
+          this.saving.set(false);
+        },
+        error: (err) => {
+          this.toast.error(err.error?.message || 'Erro ao criar funcionário');
+          this.saving.set(false);
+        }
+      });
+    }
+  }
+
+  exportPdf(): void {
+    this.http.get(`${this.API_URL}/reports/export/employees/pdf`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `funcionarios_${new Date().toISOString().split('T')[0]}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.toast.success('PDF exportado com sucesso');
+      },
+      error: () => this.toast.error('Erro ao exportar PDF')
+    });
   }
 }

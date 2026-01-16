@@ -35,3 +35,5 @@ Write-Host ""
 docker-compose up --build backend postgres
 
 
+
+

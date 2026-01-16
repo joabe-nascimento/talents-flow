@@ -38,6 +38,23 @@ springdoc:
     path: /swagger-ui.html
     operationsSorter: method
 
+# Email (disabled by default for dev)
+app:
+  email:
+    enabled: false
+
+spring.mail:
+  host: ${MAIL_HOST:smtp.gmail.com}
+  port: ${MAIL_PORT:587}
+  username: ${MAIL_USER:}
+  password: ${MAIL_PASSWORD:}
+  properties:
+    mail:
+      smtp:
+        auth: true
+        starttls:
+          enable: true
+
 ---
 # Perfil de Desenvolvimento (H2 in-memory)
 spring:

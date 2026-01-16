@@ -40,11 +40,121 @@ html {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f4f6f8;
-  color: var(--gray-800);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   line-height: 1.5;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+// Light Theme (default)
+:root, html.light {
+  --bg-primary: #f4f6f8;
+  --bg-secondary: #ffffff;
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  --text-muted: #a1a1aa;
+  --border-color: #f4f4f5;
+}
+
+// Dark Theme
+html.dark {
+  --bg-primary: #09090b;
+  --bg-secondary: #18181b;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --border-color: #27272a;
+  --gray-50: #18181b;
+  --gray-100: #27272a;
+  --gray-200: #3f3f46;
+  --gray-800: #e4e4e7;
+  --gray-900: #fafafa;
+  --white: #18181b;
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  .card, .modal {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+  }
+
+  .card-header, .modal-header, .modal-footer {
+    border-color: var(--border-color);
+  }
+
+  th {
+    background: var(--gray-100);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+  }
+
+  td {
+    border-color: var(--border-color);
+    color: var(--text-primary);
+  }
+
+  tbody tr:hover {
+    background: var(--gray-100);
+  }
+
+  .form-control {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+
+    &::placeholder {
+      color: var(--text-muted);
+    }
+  }
+
+  .btn-secondary {
+    background: var(--gray-100);
+    color: var(--text-primary);
+
+    &:hover:not(:disabled) {
+      background: var(--gray-200);
+    }
+  }
+
+  .btn-ghost {
+    color: var(--text-secondary);
+
+    &:hover:not(:disabled) {
+      background: var(--gray-100);
+      color: var(--text-primary);
+    }
+  }
+
+  .btn-icon {
+    color: var(--text-secondary);
+
+    &:hover:not(:disabled) {
+      background: var(--gray-100);
+      color: var(--text-primary);
+    }
+  }
+
+  .overlay {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  .spinner {
+    border-color: var(--gray-200);
+    border-top-color: var(--primary);
+  }
+
+  .empty-state {
+    color: var(--text-muted);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+  }
 }
 
 // Typography

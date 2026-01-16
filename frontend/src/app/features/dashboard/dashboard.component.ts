@@ -1,13 +1,26 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 interface DashboardData {
   totalEmployees: number;
   totalDepartments: number;
   openPositions: number;
   totalCandidates: number;
+}
+
+interface Activity {
+  id: number;
+  action: string;
+  entityType: string;
+  entityId: number;
+  description: string;
+  userName: string;
+  type: string;
+  timeAgo: string;
+  createdAt: string;
 }
 
 @Component({
@@ -121,13 +134,14 @@ interface DashboardData {
                 </div>
                 <span>Nova Vaga</span>
               </a>
-              <a routerLink="/dashboard/pipeline" class="action">
+              <a routerLink="/dashboard/vacations" class="action">
                 <div class="action-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <path d="M16 2v4M8 2v4M3 10h18"/>
                   </svg>
                 </div>
-                <span>Ver Pipeline</span>
+                <span>Solicitar Férias</span>
               </a>
               <a routerLink="/dashboard/reports" class="action">
                 <div class="action-icon">
@@ -144,37 +158,22 @@ interface DashboardData {
           <div class="card">
             <div class="card-header">
               <h2>Atividade Recente</h2>
-              <button class="btn-link">Ver tudo</button>
+              <a routerLink="/dashboard/reports" class="btn-link">Ver tudo</a>
             </div>
             <div class="activity-list">
-              <div class="activity-item">
-                <div class="activity-dot green"></div>
-                <div class="activity-content">
-                  <span class="activity-text">Novo candidato cadastrado</span>
-                  <span class="activity-time">há 5 min</span>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-dot blue"></div>
-                <div class="activity-content">
-                  <span class="activity-text">Vaga de Desenvolvedor atualizada</span>
-                  <span class="activity-time">há 1 hora</span>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-dot purple"></div>
-                <div class="activity-content">
-                  <span class="activity-text">Entrevista agendada</span>
-                  <span class="activity-time">há 2 horas</span>
-                </div>
-              </div>
-              <div class="activity-item">
-                <div class="activity-dot orange"></div>
-                <div class="activity-content">
-                  <span class="activity-text">Candidato movido para Triagem</span>
-                  <span class="activity-time">há 3 horas</span>
-                </div>
-              </div>
+              @if (activities().length === 0) {
+                <div class="activity-empty">Nenhuma atividade recente</div>
+              } @else {
+                @for (activity of activities(); track activity.id) {
+                  <div class="activity-item">
+                    <div class="activity-dot" [class]="getActivityDotClass(activity.type)"></div>
+                    <div class="activity-content">
+                      <span class="activity-text">{{ activity.description }}</span>
+                      <span class="activity-time">{{ activity.timeAgo }}</span>
+                    </div>
+                  </div>
+                }
+              }
             </div>
           </div>
         </div>
@@ -194,23 +193,23 @@ interface DashboardData {
     .header h1 {
       font-size: 20px;
       font-weight: 600;
-      color: #18181b;
+      color: var(--text-primary, #18181b);
       margin: 0;
     }
 
     .header p {
       font-size: 13px;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
       margin: 4px 0 0;
     }
 
     .date {
       font-size: 12px;
-      color: #71717a;
-      background: #fff;
+      color: var(--text-secondary, #71717a);
+      background: var(--bg-secondary, #fff);
       padding: 6px 12px;
       border-radius: 6px;
-      border: 1px solid #e4e4e7;
+      border: 1px solid var(--border-color, #e4e4e7);
     }
 
     .loading {
@@ -222,7 +221,7 @@ interface DashboardData {
     .spinner {
       width: 32px;
       height: 32px;
-      border: 2px solid #e4e4e7;
+      border: 2px solid var(--border-color, #e4e4e7);
       border-top-color: #7c3aed;
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
@@ -242,13 +241,13 @@ interface DashboardData {
     @media (max-width: 640px) { .stats { grid-template-columns: 1fr; } }
 
     .stat-card {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
       padding: 16px;
       display: flex;
       align-items: center;
       gap: 12px;
-      border: 1px solid #f4f4f5;
+      border: 1px solid var(--border-color, #f4f4f5);
     }
 
     .stat-icon {
@@ -276,14 +275,14 @@ interface DashboardData {
       display: block;
       font-size: 22px;
       font-weight: 600;
-      color: #18181b;
+      color: var(--text-primary, #18181b);
       line-height: 1;
     }
 
     .stat-label {
       display: block;
       font-size: 12px;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
       margin-top: 4px;
     }
 
@@ -309,9 +308,9 @@ interface DashboardData {
     @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
 
     .card {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
-      border: 1px solid #f4f4f5;
+      border: 1px solid var(--border-color, #f4f4f5);
       overflow: hidden;
     }
 
@@ -320,13 +319,13 @@ interface DashboardData {
       justify-content: space-between;
       align-items: center;
       padding: 16px;
-      border-bottom: 1px solid #f4f4f5;
+      border-bottom: 1px solid var(--border-color, #f4f4f5);
     }
 
     .card-header h2 {
       font-size: 14px;
       font-weight: 600;
-      color: #18181b;
+      color: var(--text-primary, #18181b);
       margin: 0;
     }
 
@@ -336,6 +335,7 @@ interface DashboardData {
       font-size: 12px;
       color: #7c3aed;
       cursor: pointer;
+      text-decoration: none;
     }
 
     .btn-link:hover { text-decoration: underline; }
@@ -354,38 +354,45 @@ interface DashboardData {
       gap: 10px;
       padding: 12px;
       border-radius: 8px;
-      background: #fafafa;
+      background: var(--border-color, #fafafa);
       text-decoration: none;
-      color: #3f3f46;
+      color: var(--text-primary, #3f3f46);
       font-size: 13px;
       font-weight: 500;
       transition: all 0.15s ease;
     }
 
     .action:hover {
-      background: #f4f4f5;
+      background: var(--bg-primary, #f4f4f5);
     }
 
     .action-icon {
       width: 32px;
       height: 32px;
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid #e4e4e7;
+      border: 1px solid var(--border-color, #e4e4e7);
     }
 
     .action-icon svg {
       width: 16px;
       height: 16px;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
     }
 
     /* Activity */
     .activity-list {
       padding: 8px 16px 16px;
+    }
+
+    .activity-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--text-muted, #a1a1aa);
+      font-size: 13px;
     }
 
     .activity-item {
@@ -396,7 +403,7 @@ interface DashboardData {
     }
 
     .activity-item:not(:last-child) {
-      border-bottom: 1px solid #f4f4f5;
+      border-bottom: 1px solid var(--border-color, #f4f4f5);
     }
 
     .activity-dot {
@@ -411,36 +418,39 @@ interface DashboardData {
     .activity-dot.blue { background: #3b82f6; }
     .activity-dot.purple { background: #7c3aed; }
     .activity-dot.orange { background: #f97316; }
+    .activity-dot.red { background: #ef4444; }
 
     .activity-content { flex: 1; }
 
     .activity-text {
       display: block;
       font-size: 13px;
-      color: #3f3f46;
+      color: var(--text-primary, #3f3f46);
     }
 
     .activity-time {
       display: block;
       font-size: 11px;
-      color: #a1a1aa;
+      color: var(--text-muted, #a1a1aa);
       margin-top: 2px;
     }
   `]
 })
 export class DashboardComponent implements OnInit {
+  private http = inject(HttpClient);
+  private readonly API_URL = environment.apiUrl;
+  
   loading = signal(true);
   data = signal<DashboardData | null>(null);
+  activities = signal<Activity[]>([]);
   today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
     this.loadDashboard();
   }
 
   private loadDashboard(): void {
-    this.http.get<DashboardData>('http://localhost:8085/api/dashboard').subscribe({
+    this.http.get<DashboardData>(`${this.API_URL}/dashboard`).subscribe({
       next: (data: DashboardData) => {
         this.data.set(data);
         this.loading.set(false);
@@ -449,5 +459,23 @@ export class DashboardComponent implements OnInit {
         this.loading.set(false);
       }
     });
+
+    this.http.get<Activity[]>(`${this.API_URL}/dashboard/activities`).subscribe({
+      next: (activities) => this.activities.set(activities),
+      error: () => {}
+    });
+  }
+
+  getActivityDotClass(type: string): string {
+    const classes: Record<string, string> = {
+      'CREATE': 'green',
+      'UPDATE': 'blue',
+      'DELETE': 'red',
+      'STATUS_CHANGE': 'purple',
+      'LOGIN': 'blue',
+      'APPROVAL': 'green',
+      'REJECTION': 'red'
+    };
+    return classes[type] || 'orange';
   }
 }

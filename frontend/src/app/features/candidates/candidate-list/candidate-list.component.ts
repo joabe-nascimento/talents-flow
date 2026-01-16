@@ -3,15 +3,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 
 interface Candidate {
   id: number;
   name: string;
   email: string;
   phone: string;
-  jobPosition: { id: number; title: string } | null;
+  jobPositionId: number | null;
+  jobPositionTitle: string | null;
   status: string;
-  appliedAt: string;
+  applicationDate: string;
 }
 
 interface JobPosition {
@@ -22,30 +24,28 @@ interface JobPosition {
 @Component({
   selector: 'app-candidate-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, PageHeaderComponent],
   template: `
     <div class="page">
-      <header class="header">
-        <div>
-          <h1>Candidatos</h1>
-          <p>{{ candidates().length }} candidatos</p>
-        </div>
-        <div class="header-actions">
-          <a routerLink="/dashboard/pipeline" class="btn-secondary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-            </svg>
-            Pipeline
-          </a>
-          <button class="btn-primary" (click)="openModal()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Adicionar
-          </button>
-        </div>
-      </header>
+      <app-page-header 
+        title="Candidatos" 
+        [subtitle]="candidates().length + ' candidatos'"
+        backLink="/dashboard/recruitment"
+        backLabel="Recrutamento">
+        <a routerLink="/dashboard/pipeline" class="btn-secondary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+          Pipeline
+        </a>
+        <button class="btn-primary" (click)="openModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Adicionar
+        </button>
+      </app-page-header>
 
       @if (loading()) {
         <div class="loading"><div class="spinner"></div></div>
@@ -82,13 +82,13 @@ interface JobPosition {
                         </div>
                       </div>
                     </td>
-                    <td>{{ c.jobPosition?.title || '-' }}</td>
+                    <td>{{ c.jobPositionTitle || '-' }}</td>
                     <td>
                       <span class="badge" [class]="c.status.toLowerCase()">
                         {{ getStatusLabel(c.status) }}
                       </span>
                     </td>
-                    <td class="date">{{ formatDate(c.appliedAt) }}</td>
+                    <td class="date">{{ formatDate(c.applicationDate) }}</td>
                     <td>
                       <div class="actions">
                         <button class="btn-icon" (click)="edit(c)">
@@ -152,11 +152,14 @@ interface JobPosition {
               <div class="field">
                 <label>Status</label>
                 <select [(ngModel)]="form.status" name="status" required>
-                  <option value="NEW">Novo</option>
+                  <option value="APPLIED">Novo</option>
                   <option value="SCREENING">Triagem</option>
-                  <option value="INTERVIEW">Entrevista</option>
+                  <option value="INTERVIEW_SCHEDULED">Entrevista Agendada</option>
+                  <option value="INTERVIEWED">Entrevistado</option>
+                  <option value="OFFER_SENT">Oferta Enviada</option>
                   <option value="HIRED">Contratado</option>
                   <option value="REJECTED">Rejeitado</option>
+                  <option value="WITHDRAWN">Desistiu</option>
                 </select>
               </div>
             </div>
@@ -263,11 +266,14 @@ interface JobPosition {
       font-weight: 500;
     }
 
-    .badge.new { background: #dbeafe; color: #1e40af; }
+    .badge.applied { background: #dbeafe; color: #1e40af; }
     .badge.screening { background: #fef3c7; color: #92400e; }
-    .badge.interview { background: #f3e8ff; color: #7c3aed; }
+    .badge.interview_scheduled { background: #f3e8ff; color: #7c3aed; }
+    .badge.interviewed { background: #ede9fe; color: #6d28d9; }
+    .badge.offer_sent { background: #d1fae5; color: #059669; }
     .badge.hired { background: #dcfce7; color: #16a34a; }
     .badge.rejected { background: #fee2e2; color: #dc2626; }
+    .badge.withdrawn { background: #f3f4f6; color: #6b7280; }
 
     .actions { display: flex; gap: 4px; }
 
@@ -370,7 +376,7 @@ export class CandidateListComponent implements OnInit {
   showModal = signal(false);
   editing = signal(false);
   
-  form: any = { name: '', email: '', phone: '', jobPositionId: null, status: 'NEW' };
+  form: any = { name: '', email: '', phone: '', jobPositionId: null, status: 'APPLIED' };
   editId: number | null = null;
 
   constructor(private http: HttpClient) {}
@@ -399,11 +405,14 @@ export class CandidateListComponent implements OnInit {
 
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
-      'NEW': 'Novo',
+      'APPLIED': 'Novo',
       'SCREENING': 'Triagem',
-      'INTERVIEW': 'Entrevista',
+      'INTERVIEW_SCHEDULED': 'Entrevista Agendada',
+      'INTERVIEWED': 'Entrevistado',
+      'OFFER_SENT': 'Oferta Enviada',
       'HIRED': 'Contratado',
-      'REJECTED': 'Rejeitado'
+      'REJECTED': 'Rejeitado',
+      'WITHDRAWN': 'Desistiu'
     };
     return labels[status] || status;
   }
@@ -423,7 +432,7 @@ export class CandidateListComponent implements OnInit {
   closeModal(): void { this.showModal.set(false); }
 
   edit(c: Candidate): void {
-    this.form = { name: c.name, email: c.email, phone: c.phone, jobPositionId: c.jobPosition?.id, status: c.status };
+    this.form = { name: c.name, email: c.email, phone: c.phone, jobPositionId: c.jobPositionId, status: c.status };
     this.editing.set(true);
     this.editId = c.id;
     this.showModal.set(true);
@@ -436,7 +445,7 @@ export class CandidateListComponent implements OnInit {
   }
 
   save(): void {
-    const data = { name: this.form.name, email: this.form.email, phone: this.form.phone, jobPosition: { id: this.form.jobPositionId }, status: this.form.status };
+    const data = { name: this.form.name, email: this.form.email, phone: this.form.phone, jobPositionId: this.form.jobPositionId, status: this.form.status };
     if (this.editing() && this.editId) {
       this.http.put(`${this.API_URL}/candidates/${this.editId}`, data).subscribe({ next: () => { this.closeModal(); this.loadCandidates(); } });
     } else {

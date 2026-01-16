@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 
 interface Department {
   id: number;
@@ -13,14 +14,14 @@ interface Department {
 @Component({
   selector: 'app-department-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageHeaderComponent],
   template: `
     <div class="page">
-      <header class="header">
-        <div>
-          <h1>Departamentos</h1>
-          <p>{{ departments().length }} departamentos</p>
-        </div>
+      <app-page-header 
+        title="Departamentos" 
+        [subtitle]="departments().length + ' departamentos'"
+        backLink="/dashboard/people"
+        backLabel="Pessoas">
         <button class="btn-primary" (click)="openModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -28,7 +29,7 @@ interface Department {
           </svg>
           Adicionar
         </button>
-      </header>
+      </app-page-header>
 
       @if (loading()) {
         <div class="loading"><div class="spinner"></div></div>

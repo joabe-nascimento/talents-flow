@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { PageHeaderComponent } from '../../../shared/components/page-header.component';
 
 interface JobPosition {
   id: number;
@@ -21,14 +22,14 @@ interface Department {
 @Component({
   selector: 'app-job-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageHeaderComponent],
   template: `
     <div class="page">
-      <header class="header">
-        <div>
-          <h1>Vagas</h1>
-          <p>{{ jobs().length }} vagas cadastradas</p>
-        </div>
+      <app-page-header 
+        title="Vagas" 
+        [subtitle]="jobs().length + ' vagas cadastradas'"
+        backLink="/dashboard/recruitment"
+        backLabel="Recrutamento">
         <button class="btn-primary" (click)="openModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -36,7 +37,7 @@ interface Department {
           </svg>
           Nova Vaga
         </button>
-      </header>
+      </app-page-header>
 
       @if (loading()) {
         <div class="loading"><div class="spinner"></div></div>

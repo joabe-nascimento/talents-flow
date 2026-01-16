@@ -1,6 +1,9 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { ToastService } from '../../core/services/toast.service';
+import { environment } from '../../../environments/environment';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 interface DashboardStats {
   totalEmployees: number;
@@ -17,7 +20,7 @@ interface Candidate {
 
 interface Employee {
   id: number;
-  department: { id: number; name: string } | null;
+  departmentName: string | null;
   hireDate: string;
 }
 
@@ -29,15 +32,71 @@ interface Department {
 @Component({
   selector: 'app-reports',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PageHeaderComponent],
   template: `
     <div class="page">
-      <header class="header">
-        <div>
-          <h1>Relatórios</h1>
-          <p>Métricas e indicadores</p>
+      <app-page-header 
+        title="Relatórios" 
+        subtitle="Métricas e indicadores"
+        backLink="/dashboard/finance"
+        backLabel="Financeiro">
+        <div class="export-buttons">
+          <div class="dropdown">
+            <button class="btn-export" (click)="toggleDropdown()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Exportar
+              <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            @if (showDropdown()) {
+              <div class="dropdown-menu">
+                <button (click)="exportEmployeesPdf()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  Funcionários (PDF)
+                </button>
+                <button (click)="exportEmployeesExcel()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                  </svg>
+                  Funcionários (Excel)
+                </button>
+                <div class="dropdown-divider"></div>
+                <button (click)="exportCandidatesPdf()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  Candidatos (PDF)
+                </button>
+                <button (click)="exportCandidatesExcel()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                  </svg>
+                  Candidatos (Excel)
+                </button>
+                <div class="dropdown-divider"></div>
+                <button (click)="exportVacationsPdf()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  Férias (PDF)
+                </button>
+              </div>
+            }
+          </div>
         </div>
-      </header>
+      </app-page-header>
 
       @if (loading()) {
         <div class="loading"><div class="spinner"></div></div>
@@ -179,11 +238,72 @@ interface Department {
       margin-bottom: 20px;
     }
 
-    .header h1 { font-size: 20px; font-weight: 600; color: #18181b; margin: 0; }
-    .header p { font-size: 13px; color: #71717a; margin: 4px 0 0; }
+    .header h1 { font-size: 20px; font-weight: 600; color: var(--text-primary, #18181b); margin: 0; }
+    .header p { font-size: 13px; color: var(--text-secondary, #71717a); margin: 4px 0 0; }
+
+    .export-buttons { position: relative; }
+
+    .dropdown { position: relative; }
+
+    .btn-export {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      background: var(--bg-secondary, #fff);
+      color: var(--text-primary, #3f3f46);
+      border: 1px solid var(--border-color, #e4e4e7);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-export:hover { background: var(--border-color, #f4f4f5); }
+    .btn-export svg { width: 16px; height: 16px; }
+    .btn-export .chevron { width: 14px; height: 14px; }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 4px;
+      background: var(--bg-secondary, #fff);
+      border: 1px solid var(--border-color, #e4e4e7);
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+      min-width: 200px;
+      z-index: 100;
+      padding: 4px;
+    }
+
+    .dropdown-menu button {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-primary, #3f3f46);
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .dropdown-menu button:hover { background: var(--border-color, #f4f4f5); }
+    .dropdown-menu button svg { width: 16px; height: 16px; color: var(--text-secondary, #71717a); }
+
+    .dropdown-divider {
+      height: 1px;
+      background: var(--border-color, #e4e4e7);
+      margin: 4px 0;
+    }
 
     .loading { display: flex; justify-content: center; padding: 60px 0; }
-    .spinner { width: 28px; height: 28px; border: 2px solid #e4e4e7; border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    .spinner { width: 28px; height: 28px; border: 2px solid var(--border-color, #e4e4e7); border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* KPIs */
@@ -195,15 +315,15 @@ interface Department {
     }
 
     .kpi {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
-      border: 1px solid #f4f4f5;
+      border: 1px solid var(--border-color, #f4f4f5);
       padding: 16px;
       position: relative;
     }
 
-    .kpi-value { font-size: 26px; font-weight: 700; color: #18181b; }
-    .kpi-label { font-size: 12px; color: #71717a; margin-top: 2px; }
+    .kpi-value { font-size: 26px; font-weight: 700; color: var(--text-primary, #18181b); }
+    .kpi-label { font-size: 12px; color: var(--text-secondary, #71717a); margin-top: 2px; }
 
     .kpi-trend {
       position: absolute;
@@ -230,25 +350,25 @@ interface Department {
     }
 
     .card {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
-      border: 1px solid #f4f4f5;
+      border: 1px solid var(--border-color, #f4f4f5);
       overflow: hidden;
     }
 
     .card-header {
       padding: 14px 16px;
-      border-bottom: 1px solid #f4f4f5;
+      border-bottom: 1px solid var(--border-color, #f4f4f5);
     }
 
-    .card-header h2 { font-size: 13px; font-weight: 600; color: #18181b; margin: 0; }
+    .card-header h2 { font-size: 13px; font-weight: 600; color: var(--text-primary, #18181b); margin: 0; }
 
     .card-body { padding: 16px; }
 
     .empty-chart {
       padding: 40px;
       text-align: center;
-      color: #a1a1aa;
+      color: var(--text-muted, #a1a1aa);
       font-size: 13px;
     }
 
@@ -260,7 +380,7 @@ interface Department {
     .funnel-label {
       width: 80px;
       font-size: 12px;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
       flex-shrink: 0;
     }
 
@@ -278,7 +398,7 @@ interface Department {
       transition: width 0.3s ease;
     }
 
-    .funnel-value { font-size: 12px; font-weight: 600; color: #18181b; }
+    .funnel-value { font-size: 12px; font-weight: 600; color: var(--text-primary, #18181b); }
 
     /* Bar Chart */
     .bar-chart { display: flex; flex-direction: column; gap: 10px; }
@@ -288,7 +408,7 @@ interface Department {
     .bar-label {
       width: 80px;
       font-size: 12px;
-      color: #3f3f46;
+      color: var(--text-primary, #3f3f46);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -297,7 +417,7 @@ interface Department {
     .bar-track {
       flex: 1;
       height: 20px;
-      background: #f4f4f5;
+      background: var(--border-color, #f4f4f5);
       border-radius: 4px;
       overflow: hidden;
     }
@@ -309,7 +429,7 @@ interface Department {
       transition: width 0.3s ease;
     }
 
-    .bar-value { font-size: 12px; font-weight: 600; color: #18181b; width: 30px; }
+    .bar-value { font-size: 12px; font-weight: 600; color: var(--text-primary, #18181b); width: 30px; }
 
     /* Metrics */
     .metrics { display: flex; flex-direction: column; gap: 14px; }
@@ -319,14 +439,14 @@ interface Department {
       justify-content: space-between;
       margin-bottom: 6px;
       font-size: 12px;
-      color: #3f3f46;
+      color: var(--text-primary, #3f3f46);
     }
 
-    .metric-value { font-weight: 600; color: #18181b; }
+    .metric-value { font-weight: 600; color: var(--text-primary, #18181b); }
 
     .metric-bar {
       height: 6px;
-      background: #f4f4f5;
+      background: var(--border-color, #f4f4f5);
       border-radius: 3px;
       overflow: hidden;
     }
@@ -371,13 +491,16 @@ interface Department {
     }
 
     .column-value { font-size: 10px; font-weight: 600; color: white; }
-    .column-label { font-size: 10px; color: #71717a; }
+    .column-label { font-size: 10px; color: var(--text-secondary, #71717a); }
   `]
 })
 export class ReportsComponent implements OnInit {
-  private readonly API_URL = 'http://localhost:8085/api';
+  private readonly API_URL = environment.apiUrl;
+  private http = inject(HttpClient);
+  private toast = inject(ToastService);
   
   loading = signal(true);
+  showDropdown = signal(false);
   stats = signal<DashboardStats | null>(null);
   candidates = signal<Candidate[]>([]);
   employees = signal<Employee[]>([]);
@@ -389,9 +512,11 @@ export class ReportsComponent implements OnInit {
   hiringsByMonth = signal<{month: string; count: number}[]>([]);
   successRate = signal(0);
 
-  constructor(private http: HttpClient) {}
-
   ngOnInit(): void { this.loadAllData(); }
+
+  toggleDropdown(): void {
+    this.showDropdown.update(v => !v);
+  }
 
   loadAllData(): void {
     this.http.get<DashboardStats>(`${this.API_URL}/dashboard/stats`).subscribe({
@@ -426,9 +551,9 @@ export class ReportsComponent implements OnInit {
 
   calculateFunnel(candidates: Candidate[]): void {
     const stages = [
-      { status: 'NEW', label: 'Novos', color: '#3b82f6' },
+      { status: 'APPLIED', label: 'Novos', color: '#3b82f6' },
       { status: 'SCREENING', label: 'Triagem', color: '#f59e0b' },
-      { status: 'INTERVIEW', label: 'Entrevista', color: '#7c3aed' },
+      { status: 'INTERVIEW_SCHEDULED', label: 'Entrevista', color: '#7c3aed' },
       { status: 'HIRED', label: 'Contratados', color: '#22c55e' },
       { status: 'REJECTED', label: 'Rejeitados', color: '#ef4444' }
     ];
@@ -438,15 +563,15 @@ export class ReportsComponent implements OnInit {
   calculateByDept(): void {
     const emps = this.employees();
     const depts = this.departments();
-    const byDept = depts.map(d => ({ name: d.name, count: emps.filter(e => e.department?.id === d.id).length }))
+    const byDept = depts.map(d => ({ name: d.name, count: emps.filter(e => e.departmentName === d.name).length }))
       .filter(d => d.count > 0).sort((a, b) => b.count - a.count);
     this.employeesByDept.set(byDept);
   }
 
   calculateConversion(candidates: Candidate[]): void {
     const total = candidates.length || 1;
-    const screening = candidates.filter(c => ['SCREENING', 'INTERVIEW', 'HIRED'].includes(c.status)).length;
-    const interview = candidates.filter(c => ['INTERVIEW', 'HIRED'].includes(c.status)).length;
+    const screening = candidates.filter(c => ['SCREENING', 'INTERVIEW_SCHEDULED', 'HIRED'].includes(c.status)).length;
+    const interview = candidates.filter(c => ['INTERVIEW_SCHEDULED', 'HIRED'].includes(c.status)).length;
     const hired = candidates.filter(c => c.status === 'HIRED').length;
     this.conversionRates.set({
       toScreening: Math.round((screening / total) * 100),
@@ -456,7 +581,7 @@ export class ReportsComponent implements OnInit {
   }
 
   calculateHirings(employees: Employee[]): void {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const now = new Date();
     const last6 = [];
     for (let i = 5; i >= 0; i--) {
@@ -490,5 +615,42 @@ export class ReportsComponent implements OnInit {
   getColumnHeight(count: number): number {
     const max = Math.max(...this.hiringsByMonth().map(m => m.count), 1);
     return Math.max((count / max) * 100, 15);
+  }
+
+  // Export methods
+  exportEmployeesPdf(): void {
+    this.downloadFile('/reports/export/employees/pdf', 'funcionarios.pdf');
+  }
+
+  exportEmployeesExcel(): void {
+    this.downloadFile('/reports/export/employees/excel', 'funcionarios.xlsx');
+  }
+
+  exportCandidatesPdf(): void {
+    this.downloadFile('/reports/export/candidates/pdf', 'candidatos.pdf');
+  }
+
+  exportCandidatesExcel(): void {
+    this.downloadFile('/reports/export/candidates/excel', 'candidatos.xlsx');
+  }
+
+  exportVacationsPdf(): void {
+    this.downloadFile('/reports/export/vacations/pdf', 'ferias.pdf');
+  }
+
+  private downloadFile(endpoint: string, filename: string): void {
+    this.showDropdown.set(false);
+    this.http.get(`${this.API_URL}${endpoint}`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.toast.success('Arquivo exportado com sucesso');
+      },
+      error: () => this.toast.error('Erro ao exportar arquivo')
+    });
   }
 }

@@ -15,6 +15,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     
     Optional<Employee> findByUserId(Long userId);
     
+    List<Employee> findByStatus(Employee.EmployeeStatus status);
+    
     @Query("SELECT e FROM Employee e WHERE e.status = 'ACTIVE'")
     List<Employee> findAllActive();
     

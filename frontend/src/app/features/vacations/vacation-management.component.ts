@@ -1,37 +1,63 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ToastService } from '../../core/services/toast.service';
+import { environment } from '../../../environments/environment';
+import { PageHeaderComponent } from '../../shared/components/page-header.component';
 
 interface Employee {
   id: number;
   name: string;
   email: string;
-  department: { id: number; name: string } | null;
+  departmentName: string | null;
 }
 
 interface VacationRequest {
   id: number;
-  employee: Employee;
+  employeeId: number;
+  employeeName: string;
+  employeeEmail: string;
+  departmentName: string | null;
   startDate: string;
   endDate: string;
   type: 'VACATION' | 'SICK_LEAVE' | 'PERSONAL' | 'MATERNITY' | 'PATERNITY';
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   reason: string;
   days: number;
+  approvedByName?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  createdAt: string;
+}
+
+interface VacationStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  onVacationToday: number;
 }
 
 @Component({
   selector: 'app-vacation-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageHeaderComponent],
   template: `
     <div class="page">
-      <header class="header">
-        <div>
-          <h1>Férias e Ausências</h1>
-          <p>Gerencie solicitações</p>
-        </div>
+      <app-page-header 
+        title="Férias e Ausências" 
+        subtitle="Gerencie solicitações"
+        backLink="/dashboard/management"
+        backLabel="Gestão RH">
+        <button class="btn-export" (click)="exportPdf()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Exportar PDF
+        </button>
         <button class="btn-primary" (click)="openModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -39,7 +65,7 @@ interface VacationRequest {
           </svg>
           Nova Solicitação
         </button>
-      </header>
+      </app-page-header>
 
       <!-- Stats -->
       <div class="stats">
@@ -51,7 +77,7 @@ interface VacationRequest {
             </svg>
           </div>
           <div class="stat-info">
-            <span class="stat-value">{{ pendingCount() }}</span>
+            <span class="stat-value">{{ stats()?.pending || 0 }}</span>
             <span class="stat-label">Pendentes</span>
           </div>
         </div>
@@ -63,7 +89,7 @@ interface VacationRequest {
             </svg>
           </div>
           <div class="stat-info">
-            <span class="stat-value">{{ approvedCount() }}</span>
+            <span class="stat-value">{{ stats()?.approved || 0 }}</span>
             <span class="stat-label">Aprovadas</span>
           </div>
         </div>
@@ -75,7 +101,7 @@ interface VacationRequest {
             </svg>
           </div>
           <div class="stat-info">
-            <span class="stat-value">{{ onVacationCount() }}</span>
+            <span class="stat-value">{{ stats()?.onVacationToday || 0 }}</span>
             <span class="stat-label">Em Férias Hoje</span>
           </div>
         </div>
@@ -83,20 +109,22 @@ interface VacationRequest {
 
       <!-- Tabs -->
       <div class="tabs">
-        <button class="tab" [class.active]="activeTab() === 'pending'" (click)="activeTab.set('pending')">
-          Pendentes ({{ pendingCount() }})
+        <button class="tab" [class.active]="activeTab() === 'pending'" (click)="setTab('pending')">
+          Pendentes ({{ stats()?.pending || 0 }})
         </button>
-        <button class="tab" [class.active]="activeTab() === 'approved'" (click)="activeTab.set('approved')">
+        <button class="tab" [class.active]="activeTab() === 'approved'" (click)="setTab('approved')">
           Aprovadas
         </button>
-        <button class="tab" [class.active]="activeTab() === 'all'" (click)="activeTab.set('all')">
+        <button class="tab" [class.active]="activeTab() === 'all'" (click)="setTab('all')">
           Todas
         </button>
       </div>
 
       <!-- List -->
       <div class="card">
-        @if (filteredRequests().length === 0) {
+        @if (loading()) {
+          <div class="loading"><div class="spinner"></div></div>
+        } @else if (filteredRequests().length === 0) {
           <div class="empty">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -108,13 +136,13 @@ interface VacationRequest {
           <div class="list">
             @for (req of filteredRequests(); track req.id) {
               <div class="request-item">
-                <div class="avatar">{{ getInitials(req.employee.name) }}</div>
+                <div class="avatar">{{ getInitials(req.employeeName) }}</div>
                 <div class="request-info">
                   <div class="request-header">
-                    <span class="request-name">{{ req.employee.name }}</span>
+                    <span class="request-name">{{ req.employeeName }}</span>
                     <span class="badge type-{{ req.type.toLowerCase() }}">{{ getTypeLabel(req.type) }}</span>
                   </div>
-                  <span class="request-dept">{{ req.employee.department?.name || 'Sem departamento' }}</span>
+                  <span class="request-dept">{{ req.departmentName || 'Sem departamento' }}</span>
                   <div class="request-dates">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -126,12 +154,12 @@ interface VacationRequest {
                 </div>
                 <div class="request-actions">
                   @if (req.status === 'PENDING') {
-                    <button class="btn-approve" (click)="approve(req)">
+                    <button class="btn-approve" (click)="approve(req)" title="Aprovar">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20,6 9,17 4,12"/>
                       </svg>
                     </button>
-                    <button class="btn-reject" (click)="reject(req)">
+                    <button class="btn-reject" (click)="reject(req)" title="Rejeitar">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="18" y1="6" x2="6" y2="18"/>
                         <line x1="6" y1="6" x2="18" y2="18"/>
@@ -139,7 +167,7 @@ interface VacationRequest {
                     </button>
                   } @else {
                     <span class="status-badge" [class]="req.status.toLowerCase()">
-                      {{ req.status === 'APPROVED' ? 'Aprovada' : 'Rejeitada' }}
+                      {{ getStatusLabel(req.status) }}
                     </span>
                   }
                 </div>
@@ -200,7 +228,9 @@ interface VacationRequest {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn-secondary" (click)="closeModal()">Cancelar</button>
-              <button type="submit" class="btn-primary">Salvar</button>
+              <button type="submit" class="btn-primary" [disabled]="saving()">
+                {{ saving() ? 'Salvando...' : 'Salvar' }}
+              </button>
             </div>
           </form>
         </div>
@@ -217,8 +247,28 @@ interface VacationRequest {
       margin-bottom: 20px;
     }
 
-    .header h1 { font-size: 20px; font-weight: 600; color: #18181b; margin: 0; }
-    .header p { font-size: 13px; color: #71717a; margin: 4px 0 0; }
+    .header h1 { font-size: 20px; font-weight: 600; color: var(--text-primary, #18181b); margin: 0; }
+    .header p { font-size: 13px; color: var(--text-secondary, #71717a); margin: 4px 0 0; }
+
+    .header-actions { display: flex; gap: 10px; }
+
+    .btn-export {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 16px;
+      background: var(--bg-secondary, #fff);
+      color: var(--text-primary, #3f3f46);
+      border: 1px solid var(--border-color, #e4e4e7);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-export:hover { background: var(--border-color, #f4f4f5); }
+    .btn-export svg { width: 16px; height: 16px; }
 
     .btn-primary {
       display: inline-flex;
@@ -239,6 +289,7 @@ interface VacationRequest {
     }
 
     .btn-primary:hover { background: #6d28d9; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-primary svg { width: 18px; height: 18px; }
 
     .btn-secondary {
@@ -249,8 +300,8 @@ interface VacationRequest {
       min-width: 120px;
       height: 40px;
       padding: 0 20px;
-      background: #f4f4f5;
-      color: #3f3f46;
+      background: var(--border-color, #f4f4f5);
+      color: var(--text-primary, #3f3f46);
       border: none;
       border-radius: 8px;
       font-size: 14px;
@@ -258,8 +309,7 @@ interface VacationRequest {
       cursor: pointer;
       white-space: nowrap;
     }
-    .btn-secondary:hover { background: #e4e4e7; }
-    .btn-secondary svg { width: 18px; height: 18px; }
+    .btn-secondary:hover { background: var(--text-muted, #e4e4e7); }
 
     /* Stats */
     .stats {
@@ -270,9 +320,9 @@ interface VacationRequest {
     }
 
     .stat-card {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
-      border: 1px solid #f4f4f5;
+      border: 1px solid var(--border-color, #f4f4f5);
       padding: 14px;
       display: flex;
       align-items: center;
@@ -295,8 +345,13 @@ interface VacationRequest {
     .stat-icon.blue { background: #dbeafe; color: #2563eb; }
 
     .stat-info { flex: 1; }
-    .stat-value { display: block; font-size: 20px; font-weight: 600; color: #18181b; }
-    .stat-label { display: block; font-size: 11px; color: #71717a; }
+    .stat-value { display: block; font-size: 20px; font-weight: 600; color: var(--text-primary, #18181b); }
+    .stat-label { display: block; font-size: 11px; color: var(--text-secondary, #71717a); }
+
+    /* Loading */
+    .loading { display: flex; justify-content: center; padding: 60px 0; }
+    .spinner { width: 28px; height: 28px; border: 2px solid var(--border-color, #e4e4e7); border-top-color: #7c3aed; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Tabs */
     .tabs {
@@ -312,18 +367,18 @@ interface VacationRequest {
       border-radius: 6px;
       font-size: 13px;
       font-weight: 500;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
       cursor: pointer;
     }
 
-    .tab:hover { background: #f4f4f5; }
+    .tab:hover { background: var(--border-color, #f4f4f5); }
     .tab.active { background: #7c3aed; color: white; }
 
     /* Card */
     .card {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
-      border: 1px solid #f4f4f5;
+      border: 1px solid var(--border-color, #f4f4f5);
       overflow: hidden;
     }
 
@@ -333,23 +388,21 @@ interface VacationRequest {
       align-items: center;
       gap: 12px;
       padding: 60px 20px;
-      color: #a1a1aa;
+      color: var(--text-muted, #a1a1aa);
     }
 
     .empty svg { width: 40px; height: 40px; }
-
-    .list { }
 
     .request-item {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 14px 16px;
-      border-bottom: 1px solid #f4f4f5;
+      border-bottom: 1px solid var(--border-color, #f4f4f5);
     }
 
     .request-item:last-child { border-bottom: none; }
-    .request-item:hover { background: #fafafa; }
+    .request-item:hover { background: var(--border-color, #fafafa); }
 
     .avatar {
       width: 36px;
@@ -374,7 +427,7 @@ interface VacationRequest {
       margin-bottom: 2px;
     }
 
-    .request-name { font-size: 13px; font-weight: 500; color: #18181b; }
+    .request-name { font-size: 13px; font-weight: 500; color: var(--text-primary, #18181b); }
 
     .badge {
       padding: 2px 6px;
@@ -389,18 +442,18 @@ interface VacationRequest {
     .type-maternity { background: #fce7f3; color: #be185d; }
     .type-paternity { background: #d1fae5; color: #065f46; }
 
-    .request-dept { font-size: 11px; color: #71717a; display: block; margin-bottom: 4px; }
+    .request-dept { font-size: 11px; color: var(--text-secondary, #71717a); display: block; margin-bottom: 4px; }
 
     .request-dates {
       display: flex;
       align-items: center;
       gap: 6px;
       font-size: 12px;
-      color: #3f3f46;
+      color: var(--text-primary, #3f3f46);
     }
 
-    .request-dates svg { width: 14px; height: 14px; color: #71717a; }
-    .days { font-size: 11px; color: #71717a; }
+    .request-dates svg { width: 14px; height: 14px; color: var(--text-secondary, #71717a); }
+    .days { font-size: 11px; color: var(--text-secondary, #71717a); }
 
     .request-actions { display: flex; gap: 6px; }
 
@@ -430,6 +483,7 @@ interface VacationRequest {
 
     .status-badge.approved { background: #dcfce7; color: #16a34a; }
     .status-badge.rejected { background: #fee2e2; color: #dc2626; }
+    .status-badge.cancelled { background: #f4f4f5; color: #71717a; }
 
     /* Modal */
     .overlay {
@@ -444,7 +498,7 @@ interface VacationRequest {
     }
 
     .modal {
-      background: #fff;
+      background: var(--bg-secondary, #fff);
       border-radius: 12px;
       width: 100%;
       max-width: 420px;
@@ -456,10 +510,10 @@ interface VacationRequest {
       justify-content: space-between;
       align-items: center;
       padding: 16px 20px;
-      border-bottom: 1px solid #f4f4f5;
+      border-bottom: 1px solid var(--border-color, #f4f4f5);
     }
 
-    .modal-header h2 { font-size: 15px; font-weight: 600; margin: 0; }
+    .modal-header h2 { font-size: 15px; font-weight: 600; margin: 0; color: var(--text-primary, #18181b); }
 
     .btn-close {
       width: 28px;
@@ -471,10 +525,10 @@ interface VacationRequest {
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #71717a;
+      color: var(--text-secondary, #71717a);
     }
 
-    .btn-close:hover { background: #f4f4f5; }
+    .btn-close:hover { background: var(--border-color, #f4f4f5); }
     .btn-close svg { width: 16px; height: 16px; }
 
     .modal-body { padding: 20px; }
@@ -483,16 +537,18 @@ interface VacationRequest {
 
     .field { margin-bottom: 14px; }
     .field:last-child { margin-bottom: 0; }
-    .field label { display: block; font-size: 12px; font-weight: 500; color: #3f3f46; margin-bottom: 6px; }
+    .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-primary, #3f3f46); margin-bottom: 6px; }
 
     .field input, .field select, .field textarea {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #e4e4e7;
+      border: 1px solid var(--border-color, #e4e4e7);
       border-radius: 8px;
       font-size: 13px;
       font-family: inherit;
       resize: none;
+      background: var(--bg-secondary, #fff);
+      color: var(--text-primary, #18181b);
     }
 
     .field input:focus, .field select:focus, .field textarea:focus {
@@ -505,43 +561,54 @@ interface VacationRequest {
       justify-content: flex-end;
       gap: 8px;
       padding: 16px 20px;
-      border-top: 1px solid #f4f4f5;
+      border-top: 1px solid var(--border-color, #f4f4f5);
+    }
+
+    @media (max-width: 640px) {
+      .stats { grid-template-columns: 1fr; }
+      .header { flex-direction: column; gap: 16px; align-items: flex-start; }
+      .header-actions { width: 100%; }
+      .header-actions .btn-primary { flex: 1; }
     }
   `]
 })
 export class VacationManagementComponent implements OnInit {
-  private readonly API_URL = 'http://localhost:8085/api';
+  private http = inject(HttpClient);
+  private toast = inject(ToastService);
+  private readonly API_URL = environment.apiUrl;
   
   employees = signal<Employee[]>([]);
   requests = signal<VacationRequest[]>([]);
+  stats = signal<VacationStats | null>(null);
+  loading = signal(true);
+  saving = signal(false);
   showModal = signal(false);
   activeTab = signal<'pending' | 'approved' | 'all'>('pending');
   
   form: any = { employeeId: null, type: 'VACATION', startDate: '', endDate: '', reason: '' };
 
-  constructor(private http: HttpClient) {}
-
-  ngOnInit(): void { this.loadData(); }
+  ngOnInit(): void { 
+    this.loadData(); 
+  }
 
   loadData(): void {
+    this.loading.set(true);
+    
     this.http.get<Employee[]>(`${this.API_URL}/employees`).subscribe({
       next: (data) => this.employees.set(data)
     });
-    this.generateSampleRequests();
-  }
 
-  generateSampleRequests(): void {
-    const employees = [
-      { id: 1, name: 'Maria Silva', email: 'maria@email.com', department: { id: 1, name: 'RH' } },
-      { id: 2, name: 'João Santos', email: 'joao@email.com', department: { id: 2, name: 'TI' } },
-      { id: 3, name: 'Ana Costa', email: 'ana@email.com', department: { id: 3, name: 'Financeiro' } },
-    ];
+    this.http.get<VacationStats>(`${this.API_URL}/vacations/stats`).subscribe({
+      next: (data) => this.stats.set(data)
+    });
 
-    this.requests.set([
-      { id: 1, employee: employees[0], startDate: '2026-01-20', endDate: '2026-01-30', type: 'VACATION', status: 'PENDING', reason: '', days: 10 },
-      { id: 2, employee: employees[1], startDate: '2026-02-01', endDate: '2026-02-05', type: 'SICK_LEAVE', status: 'APPROVED', reason: '', days: 5 },
-      { id: 3, employee: employees[2], startDate: '2026-01-25', endDate: '2026-01-26', type: 'PERSONAL', status: 'PENDING', reason: '', days: 2 },
-    ]);
+    this.http.get<VacationRequest[]>(`${this.API_URL}/vacations`).subscribe({
+      next: (data) => {
+        this.requests.set(data);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false)
+    });
   }
 
   filteredRequests(): VacationRequest[] {
@@ -551,11 +618,8 @@ export class VacationManagementComponent implements OnInit {
     return this.requests();
   }
 
-  pendingCount(): number { return this.requests().filter(r => r.status === 'PENDING').length; }
-  approvedCount(): number { return this.requests().filter(r => r.status === 'APPROVED').length; }
-  onVacationCount(): number {
-    const today = new Date().toISOString().split('T')[0];
-    return this.requests().filter(r => r.status === 'APPROVED' && r.startDate <= today && r.endDate >= today).length;
+  setTab(tab: 'pending' | 'approved' | 'all'): void {
+    this.activeTab.set(tab);
   }
 
   getInitials(name: string): string {
@@ -573,40 +637,97 @@ export class VacationManagementComponent implements OnInit {
     return labels[type] || type;
   }
 
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'PENDING': 'Pendente', 'APPROVED': 'Aprovada', 'REJECTED': 'Rejeitada', 'CANCELLED': 'Cancelada'
+    };
+    return labels[status] || status;
+  }
+
   openModal(): void {
     this.form = { employeeId: null, type: 'VACATION', startDate: '', endDate: '', reason: '' };
     this.showModal.set(true);
   }
 
-  closeModal(): void { this.showModal.set(false); }
+  closeModal(): void { 
+    this.showModal.set(false); 
+  }
 
   approve(req: VacationRequest): void {
-    this.requests.update(reqs => reqs.map(r => r.id === req.id ? { ...r, status: 'APPROVED' as const } : r));
+    // Get current user employee ID from localStorage
+    const userStr = localStorage.getItem('talentflow_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const approverId = user?.employeeId || 1; // Default to 1 if not found
+
+    this.http.patch<VacationRequest>(`${this.API_URL}/vacations/${req.id}/approve?approverEmployeeId=${approverId}`, {}).subscribe({
+      next: () => {
+        this.toast.success('Solicitação aprovada com sucesso');
+        this.loadData();
+      },
+      error: (err) => this.toast.error(err.error?.message || 'Erro ao aprovar solicitação')
+    });
   }
 
   reject(req: VacationRequest): void {
-    this.requests.update(reqs => reqs.map(r => r.id === req.id ? { ...r, status: 'REJECTED' as const } : r));
+    const reason = prompt('Motivo da rejeição (opcional):');
+    const userStr = localStorage.getItem('talentflow_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const approverId = user?.employeeId || 1;
+
+    let url = `${this.API_URL}/vacations/${req.id}/reject?approverEmployeeId=${approverId}`;
+    if (reason) url += `&reason=${encodeURIComponent(reason)}`;
+
+    this.http.patch<VacationRequest>(url, {}).subscribe({
+      next: () => {
+        this.toast.success('Solicitação rejeitada');
+        this.loadData();
+      },
+      error: (err) => this.toast.error(err.error?.message || 'Erro ao rejeitar solicitação')
+    });
   }
 
   save(): void {
-    if (!this.form.employeeId || !this.form.startDate || !this.form.endDate) return;
-    const employee = this.employees().find(e => e.id === this.form.employeeId);
-    if (!employee) return;
+    if (!this.form.employeeId || !this.form.startDate || !this.form.endDate) {
+      this.toast.warning('Preencha todos os campos obrigatórios');
+      return;
+    }
 
-    const start = new Date(this.form.startDate);
-    const end = new Date(this.form.endDate);
-    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    this.saving.set(true);
 
-    this.requests.update(reqs => [{
-      id: Date.now(),
-      employee,
+    const payload = {
+      employeeId: this.form.employeeId,
+      type: this.form.type,
       startDate: this.form.startDate,
       endDate: this.form.endDate,
-      type: this.form.type,
-      status: 'PENDING',
-      reason: this.form.reason,
-      days
-    }, ...reqs]);
-    this.closeModal();
+      reason: this.form.reason
+    };
+
+    this.http.post<VacationRequest>(`${this.API_URL}/vacations`, payload).subscribe({
+      next: () => {
+        this.toast.success('Solicitação criada com sucesso');
+        this.closeModal();
+        this.loadData();
+        this.saving.set(false);
+      },
+      error: (err) => {
+        this.toast.error(err.error?.message || 'Erro ao criar solicitação');
+        this.saving.set(false);
+      }
+    });
+  }
+
+  exportPdf(): void {
+    this.http.get(`${this.API_URL}/reports/export/vacations/pdf`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ferias_${new Date().toISOString().split('T')[0]}.pdf`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+        this.toast.success('PDF exportado com sucesso');
+      },
+      error: () => this.toast.error('Erro ao exportar PDF')
+    });
   }
 }

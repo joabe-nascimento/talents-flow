@@ -21,3 +21,5 @@ echo PostgreSQL encerrado.
 pause
 
 
+
+

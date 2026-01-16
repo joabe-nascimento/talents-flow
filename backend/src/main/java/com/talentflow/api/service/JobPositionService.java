@@ -96,6 +96,10 @@ public class JobPositionService {
     public Long countOpen() {
         return jobPositionRepository.countOpenPositions();
     }
+
+    public Long count() {
+        return jobPositionRepository.count();
+    }
 }
 
 

@@ -1,6 +1,7 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { ThemeService } from '../core/services/theme.service';
 
 const TOKEN_KEY = 'talentflow_token';
 const USER_KEY = 'talentflow_user';
@@ -18,7 +19,7 @@ interface User {
   standalone: true,
   imports: [CommonModule, RouterModule],
   template: `
-    <div class="app" [class.collapsed]="collapsed()">
+    <div class="app" [class.collapsed]="collapsed()" [class.dark]="themeService.isDark()">
       <aside class="sidebar">
         <!-- Brand -->
         <div class="brand">
@@ -45,64 +46,46 @@ interface User {
           </a>
 
           <div class="nav-divider"></div>
+          <span class="nav-label">MÓDULOS</span>
 
-          <a routerLink="/dashboard/employees" routerLinkActive="active" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="9" cy="7" r="3"/>
-              <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
-              <circle cx="17" cy="7" r="3"/>
-              <path d="M21 21v-2a4 4 0 00-3-3.87"/>
-            </svg>
-            <span>Funcionários</span>
+          <a routerLink="/dashboard/people" routerLinkActive="active" class="nav-item nav-hub">
+            <div class="nav-icon-wrapper blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="9" cy="7" r="3"/>
+                <path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/>
+                <circle cx="17" cy="7" r="3"/>
+                <path d="M21 21v-2a4 4 0 00-3-3.87"/>
+              </svg>
+            </div>
+            <span>Pessoas</span>
           </a>
 
-          <a routerLink="/dashboard/departments" routerLinkActive="active" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M3 9h18M9 21V9"/>
-            </svg>
-            <span>Departamentos</span>
+          <a routerLink="/dashboard/recruitment" routerLinkActive="active" class="nav-item nav-hub">
+            <div class="nav-icon-wrapper purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+              </svg>
+            </div>
+            <span>Recrutamento</span>
           </a>
 
-          <a routerLink="/dashboard/jobs" routerLinkActive="active" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="2" y="7" width="20" height="14" rx="2"/>
-              <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
-            </svg>
-            <span>Vagas</span>
+          <a routerLink="/dashboard/management" routerLinkActive="active" class="nav-item nav-hub">
+            <div class="nav-icon-wrapper yellow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            </div>
+            <span>Gestão RH</span>
           </a>
 
-          <a routerLink="/dashboard/candidates" routerLinkActive="active" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
-              <rect x="8" y="2" width="8" height="4" rx="1"/>
-              <path d="M9 14l2 2 4-4"/>
-            </svg>
-            <span>Candidatos</span>
-          </a>
-
-          <a routerLink="/dashboard/pipeline" routerLinkActive="active" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-            </svg>
-            <span>Pipeline</span>
-          </a>
-
-          <div class="nav-divider"></div>
-
-          <a routerLink="/dashboard/vacations" routerLinkActive="active" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <path d="M16 2v4M8 2v4M3 10h18"/>
-            </svg>
-            <span>Férias</span>
-          </a>
-
-          <a routerLink="/dashboard/reports" routerLinkActive="active" class="nav-item">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M18 20V10M12 20V4M6 20v-6"/>
-            </svg>
-            <span>Relatórios</span>
+          <a routerLink="/dashboard/finance" routerLinkActive="active" class="nav-item nav-hub">
+            <div class="nav-icon-wrapper green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <span>Financeiro</span>
           </a>
         </nav>
 
@@ -115,6 +98,28 @@ interface User {
               <polyline points="15,18 9,12 15,6"/>
             }
           </svg>
+        </button>
+
+        <!-- Theme Toggle -->
+        <button class="btn-theme" (click)="toggleTheme()" [title]="themeService.isDark() ? 'Modo Claro' : 'Modo Escuro'">
+          @if (themeService.isDark()) {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          } @else {
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          }
+          <span>{{ themeService.isDark() ? 'Claro' : 'Escuro' }}</span>
         </button>
 
         <!-- User -->
@@ -145,12 +150,31 @@ interface User {
     .app {
       display: flex;
       min-height: 100vh;
-      background: #f4f6f8;
+      background: var(--bg-primary);
+      --bg-primary: #f4f6f8;
+      --bg-secondary: #fff;
+      --text-primary: #18181b;
+      --text-secondary: #71717a;
+      --text-muted: #a1a1aa;
+      --border-color: #f4f4f5;
+      --sidebar-bg: #0f0f12;
+      --accent: #7c3aed;
+      --accent-light: rgba(124,58,237,0.1);
+    }
+
+    .app.dark {
+      --bg-primary: #09090b;
+      --bg-secondary: #18181b;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --border-color: #27272a;
+      --sidebar-bg: #0f0f12;
     }
 
     .sidebar {
       width: 220px;
-      background: #0f0f12;
+      background: var(--sidebar-bg);
       display: flex;
       flex-direction: column;
       position: fixed;
@@ -168,6 +192,8 @@ interface User {
     .app.collapsed .nav-item { justify-content: center; padding: 12px; }
     .app.collapsed .user { justify-content: center; gap: 0; }
     .app.collapsed .btn-logout { position: absolute; opacity: 0; }
+    .app.collapsed .btn-theme span { display: none; }
+    .app.collapsed .btn-theme { justify-content: center; }
 
     /* Brand */
     .brand {
@@ -265,6 +291,42 @@ interface User {
       border-radius: 0 2px 2px 0;
     }
 
+    /* Nav Label */
+    .nav-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      color: #52525b;
+      letter-spacing: 0.5px;
+      padding: 8px 12px 4px;
+      transition: opacity 0.2s ease;
+    }
+    .collapsed .nav-label { opacity: 0; height: 0; padding: 0; overflow: hidden; }
+
+    /* Nav Hub Items */
+    .nav-hub {
+      padding: 12px !important;
+      margin: 4px 0 !important;
+    }
+
+    .nav-icon-wrapper {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .nav-icon-wrapper svg { width: 16px; height: 16px; }
+    .nav-icon-wrapper.blue { background: linear-gradient(135deg, #3b82f6, #60a5fa); color: white; }
+    .nav-icon-wrapper.purple { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
+    .nav-icon-wrapper.yellow { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: white; }
+    .nav-icon-wrapper.green { background: linear-gradient(135deg, #16a34a, #22c55e); color: white; }
+
+    .nav-hub:hover { background: rgba(255,255,255,0.06) !important; }
+    .nav-hub.active { background: rgba(255,255,255,0.08) !important; }
+
     /* Toggle Button */
     .btn-toggle {
       width: calc(100% - 16px);
@@ -293,6 +355,34 @@ interface User {
     }
 
     .app.collapsed .btn-toggle { width: 48px; margin: 0 8px 8px; }
+
+    /* Theme Toggle */
+    .btn-theme {
+      width: calc(100% - 16px);
+      margin: 0 8px 8px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #71717a;
+      font-size: 12px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-theme:hover {
+      background: rgba(255,255,255,0.08);
+      color: #e4e4e7;
+    }
+
+    .btn-theme svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
 
     /* User */
     .user {
@@ -375,6 +465,7 @@ interface User {
       padding: 24px;
       min-height: 100vh;
       width: calc(100% - 220px);
+      background: var(--bg-primary);
       transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -408,14 +499,16 @@ interface User {
       .user { justify-content: center; }
       .content { margin-left: 64px; }
       .btn-toggle { display: none; }
+      .btn-theme span { display: none; }
     }
   `]
 })
 export class LayoutComponent implements OnInit {
+  themeService = inject(ThemeService);
+  private router = inject(Router);
+  
   currentUser: User | null = null;
   collapsed = signal(false);
-
-  constructor(private router: Router) {}
 
   ngOnInit(): void {
     this.loadUser();
@@ -446,6 +539,10 @@ export class LayoutComponent implements OnInit {
     localStorage.setItem(SIDEBAR_KEY, newState ? 'collapsed' : 'expanded');
   }
 
+  toggleTheme(): void {
+    this.themeService.toggle();
+  }
+
   getUserInitials(): string {
     const name = this.currentUser?.name || '';
     return name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase();
@@ -454,8 +551,9 @@ export class LayoutComponent implements OnInit {
   getRoleLabel(): string {
     const roles: Record<string, string> = {
       'ADMIN': 'Administrador',
+      'HR': 'RH',
       'MANAGER': 'Gerente',
-      'USER': 'Usuário'
+      'EMPLOYEE': 'Funcionário'
     };
     return roles[this.currentUser?.role || ''] || this.currentUser?.role || '';
   }

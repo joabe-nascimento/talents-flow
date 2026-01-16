@@ -292,3 +292,5 @@ Se encontrar problemas, verifique:
 4. Os logs no terminal para mensagens de erro específicas
 
 
+
+

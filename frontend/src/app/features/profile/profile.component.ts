@@ -948,7 +948,13 @@ export class ProfileComponent implements OnInit {
   showCurrentPassword = signal(false);
   showNewPassword = signal(false);
 
-  editForm = {
+  editForm: {
+    name: string;
+    email: string;
+    phone: string;
+    location: string;
+    bio: string;
+  } = {
     name: '',
     email: '',
     phone: '',
@@ -985,7 +991,18 @@ export class ProfileComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadProfile();
-    this.editForm = { ...this.profile() };
+    this.updateEditForm();
+  }
+
+  private updateEditForm(): void {
+    const p = this.profile();
+    this.editForm = {
+      name: p.name || '',
+      email: p.email || '',
+      phone: p.phone || '',
+      location: p.location || '',
+      bio: p.bio || ''
+    };
   }
 
   loadProfile(): void {
@@ -993,7 +1010,7 @@ export class ProfileComponent implements OnInit {
     if (userStr) {
       const user = JSON.parse(userStr);
       this.profile.update(p => ({ ...p, ...user }));
-      this.editForm = { ...this.profile() };
+      this.updateEditForm();
     }
   }
 
@@ -1031,7 +1048,7 @@ export class ProfileComponent implements OnInit {
 
   toggleEdit(): void {
     if (this.isEditing()) {
-      this.editForm = { ...this.profile() };
+      this.updateEditForm();
     }
     this.isEditing.set(!this.isEditing());
   }

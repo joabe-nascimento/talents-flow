@@ -19,3 +19,4 @@ public interface OnboardingTemplateRepository extends JpaRepository<OnboardingTe
     Optional<OnboardingTemplate> findByDepartmentIdIsNullAndIsActiveTrue();
 }
 
+

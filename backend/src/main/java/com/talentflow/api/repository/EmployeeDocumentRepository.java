@@ -36,3 +36,4 @@ public interface EmployeeDocumentRepository extends JpaRepository<EmployeeDocume
     List<Object[]> countByTypeForEmployee(@Param("employeeId") Long employeeId);
 }
 
+

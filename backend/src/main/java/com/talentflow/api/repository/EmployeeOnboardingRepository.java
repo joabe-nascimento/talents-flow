@@ -31,3 +31,4 @@ public interface EmployeeOnboardingRepository extends JpaRepository<EmployeeOnbo
     Double getAverageProgress();
 }
 
+

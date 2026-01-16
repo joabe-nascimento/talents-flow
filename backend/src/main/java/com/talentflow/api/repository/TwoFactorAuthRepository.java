@@ -14,3 +14,4 @@ public interface TwoFactorAuthRepository extends JpaRepository<TwoFactorAuth, Lo
     boolean existsByUserIdAndIsEnabledTrue(Long userId);
 }
 
+

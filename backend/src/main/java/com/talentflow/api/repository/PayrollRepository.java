@@ -33,3 +33,4 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
     Long countByPeriodAndStatus(@Param("year") Integer year, @Param("month") Integer month, @Param("status") Payroll.PayrollStatus status);
 }
 
+

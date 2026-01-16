@@ -39,3 +39,4 @@ public interface TimeRecordRepository extends JpaRepository<TimeRecord, Long> {
     Long countPending();
 }
 
+

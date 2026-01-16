@@ -40,3 +40,4 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByEntityTypeAndEntityId(String entityType, Long entityId);
 }
 
+

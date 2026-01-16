@@ -35,3 +35,4 @@ public interface OffboardingRepository extends JpaRepository<Offboarding, Long> 
     List<Offboarding> findPendingExitInterviews(@Param("date") java.time.LocalDateTime date);
 }
 
+

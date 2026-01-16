@@ -94,6 +94,14 @@ export const routes: Routes = [
       {
         path: 'org-chart',
         loadComponent: () => import('./features/org-chart/org-chart.component').then(m => m.OrgChartComponent)
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent)
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
       }
     ]
   },
